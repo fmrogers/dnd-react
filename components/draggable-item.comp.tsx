@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { DraggedItemPosition } from "@/components/component.types";
-import clsx from "clsx";
-import { useState, type DragEvent, type FC, type ReactNode } from "react";
+import type { DraggedItemPosition } from '@/components/dnd.types';
+import clsx from 'clsx';
+import { useState, type DragEvent, type FC, type ReactNode } from 'react';
 
 interface DraggableItemProps {
   id: string;
@@ -10,6 +10,7 @@ interface DraggableItemProps {
   onDragStart?: (id: string, position: DraggedItemPosition) => void;
   onDragMove?: (position: DraggedItemPosition) => void;
   onDragEnd?: () => void;
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
 }
 
 export const DraggableItem: FC<DraggableItemProps> = ({
@@ -18,17 +19,17 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   onDragStart,
   onDragMove,
   onDragEnd,
+  onDragOver,
 }) => {
   const [isBeingDragged, setIsBeingDragged] = useState<boolean>(false);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>) => {
-    event.dataTransfer.setData("text/plain", id);
-    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData('text/plain', id);
+    event.dataTransfer.effectAllowed = 'move';
 
     // Hide browser drag image
     const emptyImage = new Image();
-    emptyImage.src =
-      "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+    emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=';
     event.dataTransfer.setDragImage(emptyImage, 0, 0);
 
     // Don't call onDragStart here since handleMouseDown already did
@@ -67,17 +68,18 @@ export const DraggableItem: FC<DraggableItemProps> = ({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDrag={handleDrag}
+      onDragOver={onDragOver}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       className={clsx(
-        "w-120",
-        "cursor-grab",
-        "px-4",
-        "py-2",
-        "bg-slate-700",
-        "border-slate-600",
-        "border-2",
-        "rounded"
+        'w-120',
+        'cursor-grab',
+        'px-4',
+        'py-2',
+        'bg-slate-700',
+        'border-slate-600',
+        'border-2',
+        'rounded',
       )}
     >
       {children}
