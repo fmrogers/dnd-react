@@ -22,12 +22,6 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   const [isBeingDragged, setIsBeingDragged] = useState<boolean>(false);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>) => {
-    console.log("🎯 DraggableItem handleDragStart:", {
-      id,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
-
     event.dataTransfer.setData("text/plain", id);
     event.dataTransfer.effectAllowed = "move";
 
@@ -43,31 +37,24 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   };
 
   const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    console.log("🖱️ Mouse down on draggable item");
     // Trigger preview immediately on mouse down
     onDragStart?.(id, { x: event.clientX, y: event.clientY });
     setIsBeingDragged(true);
   };
 
   const handleDrag = (event: DragEvent<HTMLDivElement>) => {
-    console.log("🏃 DraggableItem handleDrag:", {
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
     if (event.clientX !== 0 && event.clientY !== 0) {
       onDragMove?.({ x: event.clientX, y: event.clientY });
     }
   };
 
   const handleDragEnd = (event: DragEvent<HTMLDivElement>) => {
-    console.log("🏁 DraggableItem handleDragEnd");
     setIsBeingDragged(false);
     onDragEnd?.();
   };
 
   // Also handle mouse up to clean up state if drag doesn't complete properly
   const handleMouseUp = () => {
-    console.log("🖱️ Mouse up - cleaning up if needed");
     if (isBeingDragged) {
       setIsBeingDragged(false);
       onDragEnd?.();
@@ -83,11 +70,14 @@ export const DraggableItem: FC<DraggableItemProps> = ({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       className={clsx(
-        "w-full cursor-grab p-2 m-1",
-        { "bg-slate-700 border-slate-600": !isBeingDragged },
-        { "bg-orange-400 border-orange-300 text-neutral-900": isBeingDragged },
-        "border-2 rounded-xl",
-        "active:opacity-1"
+        "w-120",
+        "cursor-grab",
+        "px-4",
+        "py-2",
+        "bg-slate-700",
+        "border-slate-600",
+        "border-2",
+        "rounded"
       )}
     >
       {children}
