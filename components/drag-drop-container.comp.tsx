@@ -1,7 +1,7 @@
 'use client';
 
-import type { DraggedItemPosition, DragOverState, DragPosition } from '@/components/dnd.types';
-import { computeTargetIndex, reorder } from '@/components/dnd.utils';
+import type { DraggedItemPosition } from '@/components/dnd.types';
+import { computeTargetFromBoundary, reorder } from '@/components/dnd.utils';
 import { DraggableItemPreview } from '@/components/draggable-item-preview.comp';
 import { DraggableItem } from '@/components/draggable-item.comp';
 import clsx from 'clsx';
@@ -24,6 +24,7 @@ interface DragDropContainerProps {
 
 export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
   const [listItems, setListItems] = useState<DraggedItem[]>(items);
+  const [overBoundary, setOverBoundary] = useState<number | null>(null);
 
   // Keep 'dragging'-state isolated from the re-ordering math
   const [dragState, setDragState] = useState<DragState>({
@@ -34,16 +35,21 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [originalIndex, setOriginalIndex] = useState<number | null>(null);
-  const [over, setOver] = useState<DragOverState | null>(null);
 
-  console.debug({ draggingId, originalIndex, over });
-  //console.log(over);
+  console.debug({ draggingId, originalIndex, overBoundary });
 
   const handleDragStart = (itemId: string, position: { x: number; y: number }) => {
     const draggedItem = listItems.find((item) => item.id === itemId) ?? null;
     const index = listItems.findIndex((idx) => idx.id === itemId);
 
-    cleanUpDrag();
+    setDraggingId(itemId);
+    setOriginalIndex(index);
+
+    setDragState({
+      isDragging: true,
+      draggedItem,
+      position,
+    });
   };
 
   const handleDragMove = (position: DraggedItemPosition) => {
@@ -63,19 +69,19 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
 
     const rect = event.currentTarget.getBoundingClientRect();
     const offsetY = event.clientY - rect.top;
-    const position: DragPosition = offsetY < rect.height / 2 ? 'before' : 'after';
+    const boundary = offsetY < rect.height / 2 ? hoverIndex : hoverIndex + 1;
 
-    if (over && over.index === hoverIndex && over.position === position) return;
-
-    setOver({ index: hoverIndex, position });
+    if (overBoundary !== boundary) {
+      setOverBoundary(boundary);
+    }
   };
 
   const handleDragEnd = () => {
-    if (draggingId !== null && originalIndex !== null && over !== null) {
-      const targetIndex = computeTargetIndex(originalIndex, over, listItems.length);
+    if (draggingId && originalIndex !== null && overBoundary !== null) {
+      const target = computeTargetFromBoundary(originalIndex, overBoundary);
 
-      if (targetIndex !== originalIndex) {
-        setListItems((previousState) => reorder(previousState, originalIndex, targetIndex));
+      if (target !== originalIndex) {
+        setListItems((previousState) => reorder(previousState, originalIndex, target));
       }
     }
 
@@ -91,34 +97,11 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
 
     setDraggingId(null);
     setOriginalIndex(null);
-    setOver(null);
+    setOverBoundary(null);
 
     if (options?.cancelled) {
       console.debug('Drag Cancelled');
     }
-  };
-
-  const renderInsertionLine = (itemIndex: number) => {
-    if (!over) return null;
-    if (over.index !== itemIndex) return null;
-
-    const isBefore = over.position === 'before';
-
-    return (
-      <div
-        className={clsx(
-          'pointer-events-none',
-          'absolute',
-          'left-0',
-          'right-0',
-          'h-0.5',
-          'bg-orange-400',
-          isBefore ? 'top-0' : 'bottom-0',
-          'shadow-[0_0_4px_rgba(249,115,22,0.6)]',
-          'transition-opacity',
-        )}
-      />
-    );
   };
 
   return (
@@ -136,21 +119,27 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
           'p-4',
         )}
       >
-        {listItems.map((item, index) => (
-          <div key={item.id} className="relative">
-            {renderInsertionLine(index)}
-            <DraggableItem
-              key={item.id}
-              id={item.id}
-              onDragStart={handleDragStart}
-              onDragMove={handleDragMove}
-              onDragOver={(event) => handleDragOver(event, item.id)}
-              onDragEnd={handleDragEnd}
-            >
-              {item.content}
-            </DraggableItem>
-          </div>
-        ))}
+        {listItems.map((item, index) => {
+          return (
+            <div key={item.id} className="relative">
+              {overBoundary === index && (
+                <div className="absolute -top-2 left-0 right-0 h-0.5 bg-orange-400 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
+              )}
+              <DraggableItem
+                id={item.id}
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                onDragEnd={handleDragEnd}
+                onDragOver={(event) => handleDragOver(event, item.id)}
+              >
+                {item.content}
+              </DraggableItem>
+              {index === listItems.length - 1 && overBoundary === listItems.length && (
+                <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-orange-400 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
+              )}
+            </div>
+          );
+        })}
       </div>
       {/* Custom Drag Preview */}
       <DraggableItemPreview isDragging={dragState.isDragging} position={dragState.position}>

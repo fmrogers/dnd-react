@@ -32,3 +32,11 @@ export const computeTargetIndex = (originalIndex: number, over: DragOverState, l
 
   return target;
 };
+
+export const computeTargetFromBoundary = (originalIndex: number, boundary: number): number => {
+  if (boundary <= originalIndex) {
+    return boundary;
+  } else {
+    return boundary - 1;
+  }
+};
