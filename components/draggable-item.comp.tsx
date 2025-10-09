@@ -2,7 +2,7 @@
 
 import type { DraggedItemPosition } from '@/components/dnd.types';
 import clsx from 'clsx';
-import { useState, type DragEvent, type FC, type ReactNode } from 'react';
+import { useEffect, useState, type DragEvent, type FC, type ReactNode } from 'react';
 
 interface DraggableItemProps {
   id: string;
@@ -62,6 +62,10 @@ export const DraggableItem: FC<DraggableItemProps> = ({
     }
   };
 
+  useEffect(() => {
+    console.log('isBeingDragged: ', isBeingDragged);
+  }, [isBeingDragged]);
+
   return (
     <div
       draggable="true"
@@ -80,6 +84,7 @@ export const DraggableItem: FC<DraggableItemProps> = ({
         'border-slate-600',
         'border-2',
         'rounded',
+        { 'opacity-30': isBeingDragged },
       )}
     >
       {children}
