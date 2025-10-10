@@ -123,7 +123,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
           return (
             <div key={item.id} className="relative">
               {overBoundary === index && (
-                <div className="absolute -top-2 left-0 right-0 h-0.5 bg-orange-400 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
+                <div className="absolute bottom-15 left-0 right-0 h-13 border-2 border-orange-400 rounded" />
               )}
               <DraggableItem
                 id={item.id}
@@ -131,12 +131,10 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
                 onDragMove={handleDragMove}
                 onDragEnd={handleDragEnd}
                 onDragOver={(event) => handleDragOver(event, item.id)}
+                className={clsx({ 'mt-13': overBoundary === index })}
               >
                 {item.content}
               </DraggableItem>
-              {index === listItems.length - 1 && overBoundary === listItems.length && (
-                <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-orange-400 shadow-[0_0_4px_rgba(249,115,22,0.6)]" />
-              )}
             </div>
           );
         })}

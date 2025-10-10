@@ -12,8 +12,8 @@ interface DraggableItemProps {
   onDragMove?: (position: DraggedItemPosition) => void;
   onDragEnd?: () => void;
   onDragOver?: (event: DragEvent<HTMLDivElement>) => void;
-  /** Set false to hide the built‑in handle (then supply your own wrapper if desired). */
   showHandle?: boolean;
+  className?: string;
 }
 
 export const DraggableItem: FC<DraggableItemProps> = ({
@@ -24,6 +24,7 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   onDragEnd,
   onDragOver,
   showHandle = true,
+  className,
 }) => {
   const [isBeingDragged, setIsBeingDragged] = useState<boolean>(false);
   const [isDragEnabled, setIsDragEnabled] = useState<boolean>(false);
@@ -79,7 +80,7 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   return (
     <div
       ref={rootRef}
-      draggable={isDragEnabled}
+      draggable={true}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDrag={handleDrag}
@@ -97,6 +98,7 @@ export const DraggableItem: FC<DraggableItemProps> = ({
         'items-center',
         'gap-3',
         { 'opacity-30': isBeingDragged },
+        className,
       )}
     >
       {showHandle && (
