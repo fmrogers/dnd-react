@@ -80,7 +80,7 @@ export const DraggableItem: FC<DraggableItemProps> = ({
   return (
     <div
       ref={rootRef}
-      draggable={true}
+      draggable={isDragEnabled}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDrag={handleDrag}
