@@ -4,6 +4,7 @@ import type { DraggedItemPosition } from '@/components/dnd.types';
 import { computeTargetFromBoundary, reorder } from '@/components/dnd.utils';
 import { DraggableItemPreview } from '@/components/draggable-item-preview.comp';
 import { DraggableItem } from '@/components/draggable-item.comp';
+import { InsertionPlaceholder } from '@/components/insertion-placeholder.comp';
 import clsx from 'clsx';
 import { useState, type DragEvent, type FC } from 'react';
 
@@ -42,6 +43,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
     const draggedItem = listItems.find((item) => item.id === itemId) ?? null;
     const index = listItems.findIndex((idx) => idx.id === itemId);
 
+    setOverBoundary(null);
     setDraggingId(itemId);
     setOriginalIndex(index);
 
@@ -53,8 +55,8 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
   };
 
   const handleDragMove = (position: DraggedItemPosition) => {
-    setDragState((previousState) => ({
-      ...previousState,
+    setDragState((prev) => ({
+      ...prev,
       position,
     }));
   };
@@ -81,7 +83,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
       const target = computeTargetFromBoundary(originalIndex, overBoundary);
 
       if (target !== originalIndex) {
-        setListItems((previousState) => reorder(previousState, originalIndex, target));
+        setListItems((prev) => reorder(prev, originalIndex, target));
       }
     }
 
@@ -110,7 +112,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
         className={clsx(
           'flex',
           'flex-col',
-          'gap-4',
+          'gap-3',
           'rounded',
           'bg-gray-900',
           'outline-2',
@@ -121,23 +123,21 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
       >
         {listItems.map((item, index) => {
           return (
-            <div key={item.id} className="relative">
-              {overBoundary === index && (
-                <div className="absolute bottom-15 left-0 right-0 h-13 border-2 border-orange-400 rounded" />
-              )}
+            <div key={item.id} className="flex flex-col">
+              {overBoundary === index && <InsertionPlaceholder />}
               <DraggableItem
                 id={item.id}
                 onDragStart={handleDragStart}
                 onDragMove={handleDragMove}
                 onDragEnd={handleDragEnd}
                 onDragOver={(event) => handleDragOver(event, item.id)}
-                className={clsx({ 'mt-13': overBoundary === index })}
               >
                 {item.content}
               </DraggableItem>
             </div>
           );
         })}
+        {overBoundary === listItems.length && <InsertionPlaceholder />}
       </div>
       {/* Custom Drag Preview */}
       <DraggableItemPreview isDragging={dragState.isDragging} position={dragState.position}>
