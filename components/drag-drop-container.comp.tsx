@@ -6,7 +6,7 @@ import { DraggableItemPreview } from '@/components/draggable-item-preview.comp';
 import { DraggableItem } from '@/components/draggable-item.comp';
 import { InsertionPlaceholder } from '@/components/insertion-placeholder.comp';
 import clsx from 'clsx';
-import { useState, type DragEvent, type FC } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type FC } from 'react';
 
 interface DraggedItem {
   id: string;
@@ -36,6 +36,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [originalIndex, setOriginalIndex] = useState<number | null>(null);
+  const cleanupRef = useRef(false);
 
   console.debug({ draggingId, originalIndex, overBoundary });
 
@@ -43,7 +44,8 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
     const draggedItem = listItems.find((item) => item.id === itemId) ?? null;
     const index = listItems.findIndex((idx) => idx.id === itemId);
 
-    setOverBoundary(null);
+    // Reserve the original slot immediately so the list doesn't jump and we keep a consistent placeholder.
+    setOverBoundary(index); // start with placeholder at original position
     setDraggingId(itemId);
     setOriginalIndex(index);
 
@@ -79,6 +81,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
   };
 
   const handleDragEnd = () => {
+    if (cleanupRef.current) return; // guard: already cleaned
     if (draggingId && originalIndex !== null && overBoundary !== null) {
       const target = computeTargetFromBoundary(originalIndex, overBoundary);
 
@@ -91,6 +94,7 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
   };
 
   const cleanUpDrag = (options?: { cancelled?: boolean }) => {
+    cleanupRef.current = true;
     setDragState({
       isDragging: false,
       draggedItem: null,
@@ -105,6 +109,36 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
       console.debug('Drag Cancelled');
     }
   };
+
+  // Global safety net to ensure cleanup even if native dragend is skipped (edge cases when DOM mutates)
+  useEffect(() => {
+    if (!dragState.isDragging) return;
+    cleanupRef.current = false;
+
+    const handleGlobalEnd = () => {
+      if (!cleanupRef.current) {
+        cleanUpDrag();
+      }
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (!cleanupRef.current) {
+          cleanUpDrag({ cancelled: true });
+        }
+      }
+    };
+
+    window.addEventListener('dragend', handleGlobalEnd, true);
+    window.addEventListener('drop', handleGlobalEnd, true);
+    window.addEventListener('keydown', handleKey, true);
+    return () => {
+      window.removeEventListener('dragend', handleGlobalEnd, true);
+      window.removeEventListener('drop', handleGlobalEnd, true);
+      window.removeEventListener('keydown', handleKey, true);
+    };
+  }, [dragState.isDragging]);
 
   return (
     <>
@@ -122,8 +156,9 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
         )}
       >
         {listItems.map((item, index) => {
+          const isSource = draggingId === item.id;
           return (
-            <div key={item.id} className="flex flex-col">
+            <div key={item.id} className={clsx('flex flex-col relative')}>
               {overBoundary === index && <InsertionPlaceholder />}
               <DraggableItem
                 id={item.id}
@@ -131,6 +166,14 @@ export const DraDropContainer: FC<DragDropContainerProps> = ({ items }) => {
                 onDragMove={handleDragMove}
                 onDragEnd={handleDragEnd}
                 onDragOver={(event) => handleDragOver(event, item.id)}
+                className={clsx(
+                  isSource && [
+                    // Hide via opacity (safer than visibility hidden for maintaining drag events)
+                    'opacity-0',
+                    'pointer-events-none',
+                  ],
+                )}
+                aria-hidden={isSource || undefined}
               >
                 {item.content}
               </DraggableItem>
