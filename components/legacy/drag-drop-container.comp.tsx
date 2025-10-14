@@ -2,9 +2,9 @@
 
 import type { DraggedItemPosition } from '@/components/dnd.types';
 import { computeTargetFromBoundary, reorder } from '@/components/dnd.utils';
-import { DraggableItemPreview } from '@/components/draggable-item-preview.comp';
-import { DraggableItem } from '@/components/draggable-item.comp';
-import { InsertionPlaceholder } from '@/components/insertion-placeholder.comp';
+import { DraggableItemPreview } from '@/components/legacy/draggable-item-preview.comp';
+import { DraggableItem } from '@/components/legacy/draggable-item.comp';
+import { InsertionPlaceholder } from '@/components/legacy/insertion-placeholder.comp';
 import clsx from 'clsx';
 import { useState, type DragEvent, type FC } from 'react';
 
