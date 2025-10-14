@@ -1,5 +1,5 @@
 'use client';
-import type { PointerDragState } from '@/components/dnd.types';
+import type { PointerDragState } from '@/hooks/use-pointer-drag.hook';
 import clsx from 'clsx';
 import type { FC, ReactNode } from 'react';
 import { createPortal } from 'react-dom';

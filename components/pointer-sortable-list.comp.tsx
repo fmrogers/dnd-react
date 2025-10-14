@@ -33,11 +33,22 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
 
   const handlePointerDown = (event: PointerEvent, id: string) => {
     if (event.button !== 0) return;
+    // If there is an active text selection, do NOT start a drag (allow selection usage)
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) {
+      return; // user is highlighting text; skip drag activation
+    }
     beginPointerDrag(id, event.nativeEvent);
   };
 
+  // Prevent any accidental native dragstart bubbling from text nodes or images
+  const suppressNativeDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <div className="flex flex-col gap-3 p-4 rounded bg-gray-900">
+    <div className="flex flex-col gap-3 p-4 rounded bg-gray-900" onDragStart={suppressNativeDrag}>
       {items.map((item, index) => {
         const isSource = drag.isDragging && drag.id === item.id;
         const boundaryBefore = drag.isDragging && drag.overBoundary === index;
@@ -60,9 +71,10 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
                 'gap-3',
                 'transition-opacity',
                 'focus: ring',
-                isSource && 'opacity-0',
-                'pointer-events-none',
+                isSource && 'opacity-0 pointer-events-none',
               )}
+              // Allow text selection inside content only when not dragging
+              style={isSource ? { userSelect: 'none' } : undefined}
             >
               <button
                 type="button"
@@ -76,6 +88,7 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
                   'focus:outline-none',
                   'focus:ring',
                   'focus:ring-slate-500/50',
+                  'select-none', // prevent selecting handle glyphs
                 )}
                 aria-label="Drag handle"
               >
@@ -88,7 +101,7 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
       })}
       {drag.isDragging && drag.overBoundary === items.length && <InsertionPlaceholder />}
 
-      <DragOverlay drag={drag} renderContent={(id) => items.find((item) => item.id)?.content} />
+      <DragOverlay drag={drag} renderContent={(id) => items.find((item) => item.id === id)?.content} />
     </div>
   );
 };

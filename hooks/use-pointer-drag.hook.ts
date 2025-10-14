@@ -1,5 +1,16 @@
-import type { PointerDragState } from '@/components/dnd.types';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+
+export type PointerDragState =
+  | { isDragging: false }
+  | {
+      isDragging: true;
+      id: string;
+      originalIndex: number;
+      origin: { x: number; y: number };
+      delta: { x: number; y: number };
+      rect: DOMRect;
+      overBoundary: number;
+    };
 
 interface UsePointerDragArgs<T> {
   items: T[];
@@ -26,6 +37,15 @@ export const usePointerDrag = <T>({
 
   const startDrag = useCallback(
     (id: string, event: PointerEvent) => {
+      // If user currently has a text selection, do not begin pointer drag to allow copy/select behavior
+      try {
+        const sel = window.getSelection();
+        if (sel && sel.toString().length > 0) {
+          return;
+        }
+      } catch {
+        // ignore selection errors (e.g., SSR or restricted contexts)
+      }
       const originalIndex = items.findIndex((idx) => getId(idx) === id);
       if (originalIndex === -1) return;
 
@@ -41,6 +61,12 @@ export const usePointerDrag = <T>({
         rect,
       };
 
+      // Attempt pointer capture for robustness if the element exists
+      try {
+        (event.target as HTMLElement)?.setPointerCapture?.(event.pointerId);
+      } catch {
+        // ignore if fails
+      }
       window.addEventListener('pointermove', handleMove, { passive: false });
       window.addEventListener('pointerup', handleUp, { passive: false });
       window.addEventListener('keydown', handleKey, true);
@@ -153,6 +179,7 @@ export const usePointerDrag = <T>({
 
   const detach = () => {
     window.removeEventListener('pointermove', handleMove);
+    window.removeEventListener('pointerup', handleUp as any);
     window.removeEventListener('keydown', handleKey, true);
   };
 

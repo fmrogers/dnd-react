@@ -1,4 +1,4 @@
-import { DraDropContainer } from '@/components/legacy/drag-drop-container.comp';
+import { PointerSortableList } from '@/components/pointer-sortable-list.comp';
 
 export default function Home() {
   const items = [
@@ -16,7 +16,7 @@ export default function Home() {
 
   return (
     <main className="flex justify-center items-center h-screen">
-      <DraDropContainer items={items} />
+      <PointerSortableList initial={items} />
     </main>
   );
 }
