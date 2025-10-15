@@ -1,6 +1,7 @@
 'use client';
 
 import { DragOverlay } from '@/components/drag-overlay.comp';
+import { DraggableHandle } from '@/components/draggable-handle.comp';
 import { InsertionPlaceholder } from '@/components/insertion-placeholder.comp';
 import { usePointerDrag } from '@/hooks/use-pointer-drag.hook';
 import clsx from 'clsx';
@@ -64,13 +65,12 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
                 'py-2',
                 'rounded',
                 'border-2',
-                'border-slate-600',
+                'border-slate-500',
                 'bg-slate-700',
                 'flex',
                 'items-center',
                 'gap-3',
                 'transition-opacity',
-                'focus: ring',
                 isSource && 'opacity-0 pointer-events-none',
               )}
               // Allow text selection inside content only when not dragging
@@ -92,7 +92,7 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
                 )}
                 aria-label="Drag handle"
               >
-                :::
+                <DraggableHandle />
               </button>
               <div className={clsx('flex-1', 'min-w-0')}>{item.content}</div>
             </div>

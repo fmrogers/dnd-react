@@ -1,4 +1,5 @@
 'use client';
+import { DraggableHandle } from '@/components/draggable-handle.comp';
 import type { PointerDragState } from '@/hooks/use-pointer-drag.hook';
 import clsx from 'clsx';
 import type { FC, ReactNode } from 'react';
@@ -27,6 +28,8 @@ export const DragOverlay: FC<DragOverlayProps> = ({ drag, renderContent }) => {
         'text-neutral-900',
         'px-3',
         'py-2',
+        'flex',
+        'items-center',
         'shadow-lg',
       )}
       style={{
@@ -37,7 +40,10 @@ export const DragOverlay: FC<DragOverlayProps> = ({ drag, renderContent }) => {
         transform: 'translate3d(0,0,0)',
       }}
     >
-      {renderContent(id)}
+      <div className="flex p-1 gap-3">
+        <DraggableHandle />
+        <div className="flex-1 min-w-0">{renderContent(id)}</div>
+      </div>
     </div>,
     document.body,
   );
