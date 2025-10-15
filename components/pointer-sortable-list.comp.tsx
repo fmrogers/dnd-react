@@ -48,59 +48,64 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
     e.stopPropagation();
   };
 
+  // Build a flat array of children (placeholders and items) as direct siblings
+  const children: React.ReactNode[] = [];
+  items.forEach((item, index) => {
+    const isSource = drag.isDragging && drag.id === item.id;
+    const boundaryBefore = drag.isDragging && drag.overBoundary === index;
+
+    if (boundaryBefore) {
+      children.push(<InsertionPlaceholder key={`ph-${index}`} />);
+    }
+
+    if (!isSource) {
+      children.push(
+        <div
+          key={item.id}
+          ref={(element) => registerRef(item.id, element)}
+          className={clsx(
+            'w-120',
+            'px-3',
+            'py-2',
+            'rounded',
+            'border-2',
+            'border-slate-500',
+            'bg-slate-700',
+            'flex',
+            'items-center',
+            'gap-3',
+          )}
+        >
+          <button
+            type="button"
+            onPointerDown={(event) => handlePointerDown(event, item.id)}
+            className={clsx(
+              'p-1',
+              'cursor-grab',
+              'active:cursor-grabbing',
+              'rounded',
+              'hover:bg-slate-500',
+              'focus:outline-none',
+              'focus:ring',
+              'focus:ring-slate-500/50',
+              'select-none',
+            )}
+            aria-label="Drag handle"
+          >
+            <DraggableHandle />
+          </button>
+          <div className={clsx('flex-1', 'min-w-0')}>{item.content}</div>
+        </div>
+      );
+    }
+  });
+  if (drag.isDragging && drag.overBoundary === items.length) {
+    children.push(<InsertionPlaceholder key={`ph-end`} />);
+  }
+
   return (
-    <div className="flex flex-col gap-3 p-4 rounded bg-gray-900" onDragStart={suppressNativeDrag}>
-      {items.map((item, index) => {
-        const isSource = drag.isDragging && drag.id === item.id;
-        const boundaryBefore = drag.isDragging && drag.overBoundary === index;
-
-        return (
-          <div key={item.id} className="flex flex-col">
-            {boundaryBefore && <InsertionPlaceholder />}
-            <div
-              ref={(element) => registerRef(item.id, element)}
-              className={clsx(
-                'w-120',
-                'px-3',
-                'py-2',
-                'rounded',
-                'border-2',
-                'border-slate-500',
-                'bg-slate-700',
-                'flex',
-                'items-center',
-                'gap-3',
-                'transition-opacity',
-                isSource && 'opacity-0 pointer-events-none',
-              )}
-              // Allow text selection inside content only when not dragging
-              style={isSource ? { userSelect: 'none' } : undefined}
-            >
-              <button
-                type="button"
-                onPointerDown={(event) => handlePointerDown(event, item.id)}
-                className={clsx(
-                  'p-1',
-                  'cursor-grab',
-                  'active:cursor-grabbing',
-                  'rounded',
-                  'hover:bg-slate-500',
-                  'focus:outline-none',
-                  'focus:ring',
-                  'focus:ring-slate-500/50',
-                  'select-none', // prevent selecting handle glyphs
-                )}
-                aria-label="Drag handle"
-              >
-                <DraggableHandle />
-              </button>
-              <div className={clsx('flex-1', 'min-w-0')}>{item.content}</div>
-            </div>
-          </div>
-        );
-      })}
-      {drag.isDragging && drag.overBoundary === items.length && <InsertionPlaceholder />}
-
+    <div className="p-4 rounded bg-gray-900" onDragStart={suppressNativeDrag}>
+      <div className="sortable-list flex flex-col">{children}</div>
       <DragOverlay drag={drag} renderContent={(id) => items.find((item) => item.id === id)?.content} />
     </div>
   );
