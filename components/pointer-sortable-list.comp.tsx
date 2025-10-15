@@ -55,7 +55,7 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
     const boundaryBefore = drag.isDragging && drag.overBoundary === index;
 
     if (boundaryBefore) {
-      children.push(<InsertionPlaceholder key={`ph-${index}`} />);
+      children.push(<InsertionPlaceholder key={`ph-${index}`} isDragging={drag.isDragging} />);
     }
 
     if (!isSource) {
@@ -95,12 +95,12 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
             <DraggableHandle />
           </button>
           <div className={clsx('flex-1', 'min-w-0')}>{item.content}</div>
-        </div>
+        </div>,
       );
     }
   });
   if (drag.isDragging && drag.overBoundary === items.length) {
-    children.push(<InsertionPlaceholder key={`ph-end`} />);
+    children.push(<InsertionPlaceholder key={`ph-end`} isDragging={drag.isDragging} />);
   }
 
   return (
