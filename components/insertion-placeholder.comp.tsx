@@ -3,15 +3,16 @@ import type { FC } from 'react';
 
 interface InsertionPlaceholderProps {
   className?: string;
+  isDragging?: boolean;
 }
 
-export const InsertionPlaceholder: FC<InsertionPlaceholderProps> = ({ className }) => {
+export const InsertionPlaceholder: FC<InsertionPlaceholderProps> = ({ className, isDragging }) => {
   return (
     <div
       className={clsx(
-        'h-12',
+        'h-14',
         'rounded',
-        'mb-3',
+        !isDragging && 'mb-3',
         'border-2',
         'border-dashed',
         'border-orange-400/80',

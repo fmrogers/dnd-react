@@ -42,5 +42,3 @@ export const DraggableHandle: React.FC<DraggableHandleIconProps> = ({
     </svg>
   );
 };
-
-export default DraggableHandle;
