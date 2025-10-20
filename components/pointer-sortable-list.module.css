@@ -41,3 +41,17 @@
 
   background-color: rgba(135, 206, 250, 0.3);
 }
+
+.draggingOverListItem::before {
+  content: '';
+
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+
+  z-index: 2;
+
+  background-color: red;
+}

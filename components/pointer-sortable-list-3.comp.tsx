@@ -2,7 +2,7 @@
 
 import { DraggableHandle } from '@/components/draggable-handle.comp';
 import clsx from 'clsx';
-import { DragEvent, Fragment, useCallback, useState, type FC } from 'react';
+import { DragEvent, Fragment, useCallback, useEffect, useState, type FC } from 'react';
 import styles from './pointer-sortable-list.module.css';
 
 interface Item {
@@ -20,9 +20,6 @@ export const PointerSortableList3: FC<PointerSortableListProps> = ({ initial }) 
   const handleItemDrop = useCallback((draggedItemId: string, targetItemId: string) => {
     // Reorder items
     setItems((prevItems) => {
-      // Make a shallow copy
-      prevItems = [...prevItems];
-
       const draggedIndex = prevItems.findIndex((item) => item.id === draggedItemId);
       const targetIndex = prevItems.findIndex((item) => item.id === targetItemId);
 
@@ -32,7 +29,10 @@ export const PointerSortableList3: FC<PointerSortableListProps> = ({ initial }) 
 
       const updatedItems = [...prevItems];
       const [draggedItem] = updatedItems.splice(draggedIndex, 1);
+      console.log(draggedItem);
       updatedItems.splice(targetIndex, 0, draggedItem);
+
+      console.log(updatedItems);
 
       return updatedItems;
     });
@@ -75,11 +75,18 @@ function DraggableListItem({
 
   const [isDragging, setIsDragging] = useState(false);
 
+  useEffect(() => {
+    if (!shouldBeDraggable && isDragging) {
+      setIsDragging(false);
+    }
+  }, [shouldBeDraggable]);
+
   return (
     <Fragment key={item.id}>
       <div
         key={item.id}
         className={clsx(
+          item.id,
           'w-120',
           'px-3',
           'py-2',
@@ -93,15 +100,16 @@ function DraggableListItem({
           CPL_DRAG_ITEM_CLASS_NAME,
           isDragging && 'opacity-50',
         )}
-        {...{ [CPL_LIST_ITEM_ID_DATA_ATTRIBUTE_KEY]: item.id }}
         {...(shouldBeDraggable
           ? {
               draggable: true,
-              onDragStart: () => {
+              onDragStart: (event) => {
                 setIsDragging(true);
+                event.dataTransfer.setData(ITEM_ID_DATA_TRANSFER_KEY, item.id);
               },
-              onDragEnd: () => {
+              onDragEnd: (event) => {
                 setIsDragging(false);
+                event.dataTransfer.clearData();
               },
             }
           : {
@@ -110,7 +118,7 @@ function DraggableListItem({
                 event.preventDefault();
               },
               onDragEnterCapture: (event: DragEvent<HTMLDivElement>) => {
-                (event.target as HTMLDivElement).classList.add(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
+                getDroppableListItem(event)?.classList.add(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
               },
               onDragLeave: (event: DragEvent<HTMLDivElement>) => {
                 const targetIsListItem = (event.target as HTMLDivElement).classList.contains(CPL_DRAG_ITEM_CLASS_NAME);
@@ -130,20 +138,21 @@ function DraggableListItem({
 
                 droppableListItem.classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
 
-                const listItemId = droppableListItem.getAttribute(CPL_LIST_ITEM_ID_DATA_ATTRIBUTE_KEY);
+                const originalItemId = event.dataTransfer.getData(ITEM_ID_DATA_TRANSFER_KEY);
 
-                if (!listItemId) {
+                if (!originalItemId) {
                   return;
                 }
 
-                onItemDrop(item.id, listItemId);
+                onItemDrop(originalItemId, item.id);
+
+                event.dataTransfer.clearData();
               },
             })}
       >
         <button
-          type="button"
-          // onPointerDown={(event) => handlePointerDown(event, item.id)}
           className={clsx(
+            item.id,
             'p-1',
             'cursor-grab',
             'active:cursor-grabbing',
@@ -175,4 +184,4 @@ function getDroppableListItem(event: DragEvent<HTMLDivElement>) {
 
 const CPL_DRAG_ITEM_CLASS_NAME = 'cpl-dragitem';
 const CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME = styles.draggingOverListItem;
-const CPL_LIST_ITEM_ID_DATA_ATTRIBUTE_KEY = 'data-cpl-list-item-id';
+const ITEM_ID_DATA_TRANSFER_KEY = 'text';
