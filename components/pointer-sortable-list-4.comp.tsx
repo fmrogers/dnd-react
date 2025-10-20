@@ -37,74 +37,115 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
 
     switch (kind) {
       case 'below': {
-        const { draggedItemId, targetItemId } = itemDropEvent;
+        const { draggedItemIdsPath, droppedBelowItemIdsPath } = itemDropEvent;
 
-        setItems((prevItems) => {
-          // Find the dragged item and its parent context
-          let draggedItem: Item | null = null;
-          let draggedParentArray: Item[] | null = null;
-          let draggedIndex = -1;
+        const prevItems = items;
 
-          // Find the target item and its parent context  
-          let targetParentArray: Item[] | null = null;
-          let targetIndex = -1;
+        const updatedItems = [...prevItems];
 
-          function findItemRecursively(items: Item[], parentArray: Item[] | null = null): void {
-            items.forEach((item, index) => {
-              if (item.id === draggedItemId) {
-                draggedItem = item;
-                draggedParentArray = parentArray || prevItems;
-                draggedIndex = parentArray ? parentArray.findIndex(p => p.id === item.id) : index;
-              }
-              if (item.id === targetItemId) {
-                targetParentArray = parentArray || prevItems;
-                targetIndex = parentArray ? parentArray.findIndex(p => p.id === item.id) : index;
-              }
-              if (item.children) {
-                findItemRecursively(item.children, items);
-              }
-            });
+        // Find and pop dragged item
+        let draggedItem: Item | null = null;
+        let visitingItem = updatedItems.find((item) => item.id === draggedItemIdsPath[0]);
+
+        for (let i = 1; i < draggedItemIdsPath.length; i++) {
+          const draggedItemId = draggedItemIdsPath[i];
+
+          if (draggedItemId === undefined || !visitingItem?.children?.length) {
+            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
           }
 
-          findItemRecursively(prevItems);
+          const currentItemIndex = visitingItem.children.findIndex((child) => child.id === draggedItemId);
 
-          if (!draggedItem || !draggedParentArray || !targetParentArray || draggedIndex === -1 || targetIndex === -1) {
-            return prevItems;
+          if (currentItemIndex === -1) {
+            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
           }
 
-          // If moving within the same parent array
-          if (draggedParentArray === targetParentArray) {
-            const updatedItems = JSON.parse(JSON.stringify(prevItems)); // Deep clone
-            
-            function reorderWithinSameParent(items: Item[]): Item[] {
-              return items.map(item => {
-                if (item.children && item.children === draggedParentArray) {
-                  const newChildren = [...item.children];
-                  const [movedItem] = newChildren.splice(draggedIndex, 1);
-                  newChildren.splice(targetIndex, 0, movedItem);
-                  return { ...item, children: newChildren };
-                } else if (item.children) {
-                  return { ...item, children: reorderWithinSameParent(item.children) };
-                }
-                return item;
-              });
-            }
+          const currentItem = visitingItem.children[currentItemIndex];
 
-            // Handle root level reordering
-            if (draggedParentArray === prevItems) {
-              const newItems = [...prevItems];
-              const [movedItem] = newItems.splice(draggedIndex, 1);
-              newItems.splice(targetIndex, 0, movedItem);
-              return newItems;
-            } else {
-              return reorderWithinSameParent(updatedItems);
-            }
+          if (!currentItem) {
+            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
           }
 
-          // If moving between different parent arrays, we need more complex logic
-          // For now, return original items (this case is more complex and might need the existing "over" logic)
-          return prevItems;
-        });
+          const isLastId = i === draggedItemIdsPath.length - 1;
+
+          if (!isLastId) {
+            visitingItem = currentItem;
+            break;
+          }
+
+          // Last id
+          // visitingItem.children = visitingItem.children?.filter((child) => child.id !== draggedItemId);
+          visitingItem.children = visitingItem.children.filter((child) => child.id !== draggedItemId);
+          draggedItem = currentItem;
+          visitingItem = undefined;
+          break;
+        }
+
+        if (!draggedItem) {
+          return prevItems; // Dragged item not found, return original list
+        }
+
+        // Find and pop dragged item
+        let droppedOnParentItem: Item | null = null;
+        visitingItem = updatedItems.find((item) => item.id === droppedBelowItemIdsPath[0]);
+
+        if (droppedBelowItemIdsPath.length === 2 && visitingItem) {
+          droppedOnParentItem = visitingItem;
+        }
+
+        for (let i = 1; i < droppedBelowItemIdsPath.length - 1; i++) {
+          const droppedOnItemId = droppedBelowItemIdsPath[i];
+
+          if (droppedOnItemId === undefined || !visitingItem?.children?.length) {
+            break;
+          }
+
+          const currentItemIndex = visitingItem.children.findIndex((child) => child.id === droppedOnItemId);
+
+          if (currentItemIndex === -1) {
+            break;
+          }
+
+          const currentItem = visitingItem.children[currentItemIndex];
+
+          if (!currentItem) {
+            break;
+          }
+
+          const isLastId = i === droppedBelowItemIdsPath.length - 2;
+
+          if (isLastId) {
+            currentItem.children = visitingItem.children.filter((child) => child.id !== droppedOnItemId);
+            draggedItem = currentItem;
+            break;
+          }
+
+          visitingItem = currentItem;
+        }
+
+        debugger;
+
+        const lastDroppedOnId = droppedBelowItemIdsPath[droppedBelowItemIdsPath.length - 1];
+
+        if (droppedOnParentItem) {
+          const droppedOnIndex = droppedOnParentItem.children?.findIndex((child) => child.id === lastDroppedOnId);
+
+          if (droppedOnIndex === undefined || droppedOnIndex === -1) {
+            throw new Error(`Cannot find dropped-on item with id ${lastDroppedOnId}`);
+          }
+
+          droppedOnParentItem.children?.splice(droppedOnIndex + 1, 0, draggedItem);
+        } else {
+          const droppedOnIndex = updatedItems.findIndex((item) => item.id === lastDroppedOnId);
+
+          if (droppedOnIndex === -1) {
+            throw new Error(`Cannot find dropped-on item with id ${lastDroppedOnId}`);
+          }
+
+          updatedItems.splice(droppedOnIndex + 1, 0, draggedItem);
+        }
+
+        setItems(updatedItems);
 
         break;
       }
@@ -166,8 +207,8 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
   }, []);
 
   return (
-    <div 
-      className="p-4 rounded bg-gray-900 max-h-[600px] overflow-y-auto" 
+    <div
+      className="p-4 rounded bg-gray-900 max-h-[600px] overflow-y-auto"
       style={{ '--cpl-dnd-sort-list-item-height': '50px' } as React.CSSProperties}
       /*  onDragStart={suppressNativeDrag} */
     >
@@ -205,7 +246,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
 };
 
 type HandleItemDropEvent =
-  | { kind: 'below'; draggedItemId: string; targetItemId: string }
+  | { kind: 'below'; draggedItemIdsPath: string[]; droppedBelowItemIdsPath: string[] }
   | { kind: 'over'; draggedItemIdsPath: string[]; droppedOnItemId: string };
 
 function DraggableListItem({
@@ -328,8 +369,8 @@ function DraggableListItem({
 
               onItemDrop({
                 kind: 'below',
-                targetItemId: item.id,
-                draggedItemId: draggedItem.id,
+                draggedItemIdsPath: draggedItem.ids,
+                droppedBelowItemIdsPath: item.ids,
               });
 
               event.dataTransfer.clearData();
