@@ -16,7 +16,7 @@ interface PointerSortableListProps {
   initial: Item[];
 }
 
-export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) => {
+export const PointerSortableList2: FC<PointerSortableListProps> = ({ initial }) => {
   const [items, setItems] = useState<Item[]>(initial);
   const refs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -40,12 +40,6 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
       return; // user is highlighting text; skip drag activation
     }
     beginPointerDrag(id, event.nativeEvent);
-  };
-
-  // Prevent any accidental native dragstart bubbling from text nodes or images
-  const suppressNativeDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
   };
 
   // Build a flat array of children (placeholders and items) as direct siblings
@@ -132,6 +126,7 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
                   'gap-3',
                   isSource && 'opacity-50',
                 )}
+                onDragOver={(e) => console.log(e)}
               >
                 <button
                   type="button"
@@ -161,4 +156,10 @@ export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) =
       <DragOverlay drag={drag} renderContent={(id) => items.find((item) => item.id === id)?.content} />
     </div>
   );
+};
+
+// Prevent any accidental native dragstart bubbling from text nodes or images
+const suppressNativeDrag = (e: React.DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
 };

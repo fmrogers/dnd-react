@@ -28,7 +28,7 @@ export const DraggableHandle: React.FC<DraggableHandleIconProps> = ({
       role="img"
       aria-hidden={svgProps['aria-label'] ? undefined : true}
       focusable="false"
-      className={clsx('inline-block', className)}
+      className={clsx('inline-block', 'pointer-events-none', className)}
       style={mergedStyle}
       {...svgProps}
     >

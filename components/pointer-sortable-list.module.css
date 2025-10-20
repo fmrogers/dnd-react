@@ -1,0 +1,42 @@
+.divider {
+  width: 100%;
+  height: 2px;
+  background-color: lightcoral;
+
+  position: relative;
+}
+
+.divider::before {
+  content: '';
+
+  position: absolute;
+  top: -16px;
+  left: 0;
+  width: 100%;
+  height: 32px;
+
+  z-index: 1;
+
+  background-color: transparent;
+}
+
+.divider::before:hover {
+  background-color: lightcoral;
+}
+
+.draggingOverListItem {
+  position: relative;
+}
+
+.draggingOverListItem::after {
+  content: '';
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  background-color: rgba(135, 206, 250, 0.3);
+  pointer-events: none;
+}
