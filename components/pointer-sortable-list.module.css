@@ -1,9 +1,24 @@
-.divider {
+.dividerWrapper {
   width: 100%;
-  height: 2px;
-  background-color: lightcoral;
-
+  height: calc(var(--cpl-dnd-sort-list-item-height) / 2 + 4px);
+  margin: calc(var(--cpl-dnd-sort-list-item-height) / 4 * -1) 0;
+  /* background-color: lightcoral; */
   position: relative;
+}
+
+.draggingOverListDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draggingOverListDivider::after {
+  content: '';
+
+  height: 4px;
+  width: 100%;
+
+  background-color: red;
 }
 
 .divider::before {
@@ -40,18 +55,4 @@
   z-index: 1;
 
   background-color: rgba(135, 206, 250, 0.3);
-}
-
-.draggingOverListItem::before {
-  content: '';
-
-  position: absolute;
-  bottom: -10px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-
-  z-index: 2;
-
-  background-color: red;
 }

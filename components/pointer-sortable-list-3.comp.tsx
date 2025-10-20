@@ -8,6 +8,7 @@ import styles from './pointer-sortable-list.module.css';
 interface Item {
   id: string;
   content: string;
+  children?: Item[];
 }
 
 interface PointerSortableListProps {
@@ -81,6 +82,8 @@ function DraggableListItem({
     }
   }, [shouldBeDraggable]);
 
+  const isParentDroppable = Boolean(item.children?.length);
+
   return (
     <Fragment key={item.id}>
       <div
@@ -112,12 +115,13 @@ function DraggableListItem({
                 event.dataTransfer.clearData();
               },
             }
-          : {
+          : isParentDroppable
+          ? {
               onDragOver: (event) => {
                 // This enables dropping
                 event.preventDefault();
               },
-              onDragEnterCapture: (event: DragEvent<HTMLDivElement>) => {
+              onDragEnter: (event: DragEvent<HTMLDivElement>) => {
                 getDroppableListItem(event)?.classList.add(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
               },
               onDragLeave: (event: DragEvent<HTMLDivElement>) => {
@@ -148,7 +152,8 @@ function DraggableListItem({
 
                 event.dataTransfer.clearData();
               },
-            })}
+            }
+          : {})}
       >
         <button
           className={clsx(
@@ -171,7 +176,42 @@ function DraggableListItem({
         </button>
         <div className={clsx('flex-1', 'min-w-0')}>{item.content}</div>
       </div>
-      {/* <div className={styles.divider} /> */}
+      {isParentDroppable ? (
+        <div style={{ height: 4 }} />
+      ) : (
+        <div
+          className={clsx(styles.dividerWrapper)}
+          {...{
+            onDragOver: (event) => {
+              // This enables dropping
+              event.preventDefault();
+            },
+            onDragEnterCapture: (event: DragEvent<HTMLDivElement>) => {
+              console.log(event);
+
+              (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            },
+            onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            },
+            onDrop: (event: DragEvent<HTMLDivElement>) => {
+              event.preventDefault();
+
+              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+
+              const originalItemId = event.dataTransfer.getData(ITEM_ID_DATA_TRANSFER_KEY);
+
+              if (!originalItemId) {
+                return;
+              }
+
+              onItemDrop(originalItemId, item.id);
+
+              event.dataTransfer.clearData();
+            },
+          }}
+        />
+      )}
     </Fragment>
   );
 }
@@ -184,4 +224,5 @@ function getDroppableListItem(event: DragEvent<HTMLDivElement>) {
 
 const CPL_DRAG_ITEM_CLASS_NAME = 'cpl-dragitem';
 const CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME = styles.draggingOverListItem;
+const CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME = styles.draggingOverListDivider;
 const ITEM_ID_DATA_TRANSFER_KEY = 'text';
