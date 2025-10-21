@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeItemsBeforeTarget } from './list-4.utils';
+import { moveItemAsChild, placeItemsBeforeTarget } from './list-4.utils';
 
 interface TestItem {
   id: string;
@@ -275,6 +275,293 @@ describe('placeItemsBeforeTarget', () => {
       expect(parent2?.children).toHaveLength(2);
       expect(parent2?.children?.[1].id).toBe('1-1-1');
       expect(parent2?.children?.[1].content).toBe('Grandchild 1-1-1');
+    });
+  });
+});
+
+describe('moveItemAsChild', () => {
+  const createTestData = (): TestItem[] => [
+    {
+      id: '1',
+      content: 'Iron Man',
+      children: [
+        { id: '1-1', content: 'Mark I Armor' },
+        { id: '1-2', content: 'Mark 50 Armor' },
+        { id: '1-3', content: 'Arc Reactor' },
+      ],
+    },
+    {
+      id: '2',
+      content: 'Captain America',
+      children: [
+        { id: '2-1', content: 'Vibranium Shield' },
+        { id: '2-2', content: 'Super Soldier Serum' },
+      ],
+    },
+    { id: '3', content: 'Black Widow' },
+    { id: '4', content: 'Hawkeye' },
+    {
+      id: '5',
+      content: 'Thor',
+      children: [
+        { id: '5-1', content: 'Mjolnir' },
+        { id: '5-2', content: 'Stormbreaker' },
+      ],
+    },
+  ];
+
+  describe('Basic functionality', () => {
+    it('should move root item as child of another root item', () => {
+      const items = createTestData();
+
+      // Move Black Widow to become a child of Thor
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['3'], // Black Widow's path
+        ['5'], // Thor's path
+      );
+
+      expect(result).toHaveLength(4); // One less root item
+      expect(result.some((item) => item.id === '3')).toBe(false); // Black Widow not at root
+
+      const thor = result.find((item) => item.id === '5');
+      expect(thor?.children).toHaveLength(3);
+      expect(thor?.children?.[2].id).toBe('3'); // Black Widow added as last child
+      expect(thor?.children?.[2].content).toBe('Black Widow');
+    });
+
+    it('should move root item as child of item that has no children', () => {
+      const items = createTestData();
+
+      // Move Hawkeye to become a child of Black Widow (who has no children)
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['4'], // Hawkeye's path
+        ['3'], // Black Widow's path
+      );
+
+      expect(result).toHaveLength(4); // One less root item
+
+      const blackWidow = result.find((item) => item.id === '3');
+      expect(blackWidow?.children).toHaveLength(1);
+      expect(blackWidow?.children?.[0].id).toBe('4'); // Hawkeye is now child
+      expect(blackWidow?.children?.[0].content).toBe('Hawkeye');
+    });
+
+    it('should move child item to become child of another parent', () => {
+      const items = createTestData();
+
+      // Move Mark I Armor from Iron Man to Captain America
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['1', '1-1'], // Mark I Armor's path
+        ['2'], // Captain America's path
+      );
+
+      // Iron Man should have one less child
+      const ironMan = result.find((item) => item.id === '1');
+      expect(ironMan?.children).toHaveLength(2);
+      expect(ironMan?.children?.some((child) => child.id === '1-1')).toBe(false);
+
+      // Captain America should have one more child
+      const captainAmerica = result.find((item) => item.id === '2');
+      expect(captainAmerica?.children).toHaveLength(3);
+      expect(captainAmerica?.children?.[2].id).toBe('1-1'); // Mark I Armor added
+      expect(captainAmerica?.children?.[2].content).toBe('Mark I Armor');
+    });
+
+    it('should move child to become child of sibling', () => {
+      const items = createTestData();
+
+      // Move Arc Reactor to become child of Mark I Armor
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['1', '1-3'], // Arc Reactor's path
+        ['1', '1-1'], // Mark I Armor's path
+      );
+
+      const ironMan = result.find((item) => item.id === '1');
+      expect(ironMan?.children).toHaveLength(2); // One less direct child
+
+      const markIArmor = ironMan?.children?.find((child) => child.id === '1-1');
+      expect(markIArmor?.children).toHaveLength(1);
+      expect(markIArmor?.children?.[0].id).toBe('1-3'); // Arc Reactor is now child of Mark I
+    });
+  });
+
+  describe('Edge cases and error handling', () => {
+    it('should return original items when trying to drop item on itself', () => {
+      const items = createTestData();
+
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['1'], // Iron Man
+        ['1'], // Drop on Iron Man itself
+      );
+
+      expect(result).toEqual(items); // Should be unchanged
+    });
+
+    it('should return original items when dragged item is not found at root level', () => {
+      const items = createTestData();
+
+      const result = moveItemAsChild(
+        items,
+        'id',
+        ['non-existent'], // Invalid dragged item
+        ['1'],
+      );
+
+      expect(result).toEqual(items);
+    });
+
+    it('should throw error when dragged child item is not found', () => {
+      const items = createTestData();
+
+      expect(() => {
+        moveItemAsChild(
+          items,
+          'id',
+          ['1', 'non-existent'], // Invalid child path
+          ['2'],
+        );
+      }).toThrow('Cannot find dragged item with id non-existent');
+    });
+
+    it('should throw error when target item is not found', () => {
+      const items = createTestData();
+
+      expect(() => {
+        moveItemAsChild(
+          items,
+          'id',
+          ['1'], // Valid dragged item
+          ['non-existent'], // Invalid target
+        );
+      }).toThrow('Cannot find target item with id non-existent');
+    });
+
+    it('should throw error when would create circular dependency', () => {
+      const items = createTestData();
+
+      expect(() => {
+        moveItemAsChild(
+          items,
+          'id',
+          ['1'], // Iron Man
+          ['1', '1-1'], // Mark I Armor (child of Iron Man)
+        );
+      }).toThrow('Cannot move item: would create circular dependency');
+    });
+
+    it('should handle empty children arrays', () => {
+      const items: TestItem[] = [
+        { id: '1', content: 'Item 1', children: [] },
+        { id: '2', content: 'Item 2' },
+      ];
+
+      const result = moveItemAsChild(items, 'id', ['2'], ['1']);
+
+      expect(result).toHaveLength(1);
+      const item1 = result[0];
+      expect(item1.children).toHaveLength(1);
+      expect(item1.children?.[0].id).toBe('2');
+    });
+
+    it('should preserve item structure and content', () => {
+      const items = createTestData();
+
+      const result = moveItemAsChild(items, 'id', ['1'], ['3']);
+
+      const blackWidow = result.find((item) => item.id === '3');
+      const movedIronMan = blackWidow?.children?.[0];
+
+      expect(movedIronMan?.content).toBe('Iron Man');
+      expect(movedIronMan?.children).toHaveLength(3); // All Iron Man's children preserved
+      expect(movedIronMan?.children?.[0].content).toBe('Mark I Armor');
+    });
+  });
+
+  describe('Complex nested scenarios', () => {
+    it('should handle moving between deeply nested structures', () => {
+      const complexItems: TestItem[] = [
+        {
+          id: '1',
+          content: 'Parent 1',
+          children: [
+            {
+              id: '1-1',
+              content: 'Child 1-1',
+              children: [
+                { id: '1-1-1', content: 'Grandchild 1-1-1' },
+                { id: '1-1-2', content: 'Grandchild 1-1-2' },
+              ],
+            },
+          ],
+        },
+        {
+          id: '2',
+          content: 'Parent 2',
+          children: [
+            {
+              id: '2-1',
+              content: 'Child 2-1',
+              children: [{ id: '2-1-1', content: 'Grandchild 2-1-1' }],
+            },
+          ],
+        },
+      ];
+
+      // Move grandchild from one deep nest to another
+      const result = moveItemAsChild(
+        complexItems,
+        'id',
+        ['1', '1-1', '1-1-1'], // Grandchild 1-1-1
+        ['2', '2-1'], // Child 2-1
+      );
+
+      // Original location should have one less grandchild
+      const parent1 = result.find((item) => item.id === '1');
+      const child11 = parent1?.children?.[0];
+      expect(child11?.children).toHaveLength(1);
+      expect(child11?.children?.[0].id).toBe('1-1-2');
+
+      // Target location should have one more grandchild
+      const parent2 = result.find((item) => item.id === '2');
+      const child21 = parent2?.children?.[0];
+      expect(child21?.children).toHaveLength(2);
+      expect(child21?.children?.[1].id).toBe('1-1-1');
+      expect(child21?.children?.[1].content).toBe('Grandchild 1-1-1');
+    });
+
+    it('should prevent circular dependency in complex structures', () => {
+      const complexItems: TestItem[] = [
+        {
+          id: '1',
+          content: 'Parent 1',
+          children: [
+            {
+              id: '1-1',
+              content: 'Child 1-1',
+              children: [{ id: '1-1-1', content: 'Grandchild 1-1-1' }],
+            },
+          ],
+        },
+      ];
+
+      expect(() => {
+        moveItemAsChild(
+          complexItems,
+          'id',
+          ['1', '1-1'], // Child 1-1
+          ['1', '1-1', '1-1-1'], // Its own grandchild
+        );
+      }).toThrow('Cannot move item: would create circular dependency');
     });
   });
 });
