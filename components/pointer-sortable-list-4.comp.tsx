@@ -2,7 +2,8 @@
 
 import { flattenTree, FlattenTreeNode } from '@/app/utilities/flatten-tree-2';
 import clsx from 'clsx';
-import React, { DragEvent, Fragment, ReactNode, useCallback, useMemo, useState, type FC } from 'react';
+import { DragEvent, Fragment, ReactNode, useCallback, useMemo, useState, type FC } from 'react';
+import { placeItemsBeforeTarget } from './list-4.utils';
 import styles from './pointer-sortable-list.module.css';
 
 interface Item {
@@ -14,6 +15,8 @@ interface Item {
 interface PointerSortableListProps {
   initial: Item[];
 }
+
+const idKey = 'id';
 
 export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) => {
   const itemsIdMap = useMemo(() => {
@@ -27,12 +30,12 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
   const [items, setItems] = useState<Item[]>(initial);
 
   const flatItems = useMemo(() => {
-    return flattenTree(items, 'id');
+    return flattenTree(items, idKey);
   }, [items]);
 
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
 
-  const handleItemDrop = useCallback((itemDropEvent: HandleItemDropEvent) => {
+  const handleItemDrop = useCallback((itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
     const { kind } = itemDropEvent;
 
     switch (kind) {
@@ -41,109 +44,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
 
         const prevItems = items;
 
-        const updatedItems = [...prevItems];
-
-        // Find and pop dragged item
-        let draggedItem: Item | null = null;
-        let visitingItem = updatedItems.find((item) => item.id === draggedItemIdsPath[0]);
-
-        for (let i = 1; i < draggedItemIdsPath.length; i++) {
-          const draggedItemId = draggedItemIdsPath[i];
-
-          if (draggedItemId === undefined || !visitingItem?.children?.length) {
-            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
-          }
-
-          const currentItemIndex = visitingItem.children.findIndex((child) => child.id === draggedItemId);
-
-          if (currentItemIndex === -1) {
-            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
-          }
-
-          const currentItem = visitingItem.children[currentItemIndex];
-
-          if (!currentItem) {
-            throw new Error(`Cannot find dragged item with id ${draggedItemId}`);
-          }
-
-          const isLastId = i === draggedItemIdsPath.length - 1;
-
-          if (!isLastId) {
-            visitingItem = currentItem;
-            break;
-          }
-
-          // Last id
-          // visitingItem.children = visitingItem.children?.filter((child) => child.id !== draggedItemId);
-          visitingItem.children = visitingItem.children.filter((child) => child.id !== draggedItemId);
-          draggedItem = currentItem;
-          visitingItem = undefined;
-          break;
-        }
-
-        if (!draggedItem) {
-          return prevItems; // Dragged item not found, return original list
-        }
-
-        // Find and pop dragged item
-        let droppedOnParentItem: Item | null = null;
-        visitingItem = updatedItems.find((item) => item.id === droppedBelowItemIdsPath[0]);
-
-        if (droppedBelowItemIdsPath.length === 2 && visitingItem) {
-          droppedOnParentItem = visitingItem;
-        }
-
-        for (let i = 1; i < droppedBelowItemIdsPath.length - 1; i++) {
-          const droppedOnItemId = droppedBelowItemIdsPath[i];
-
-          if (droppedOnItemId === undefined || !visitingItem?.children?.length) {
-            break;
-          }
-
-          const currentItemIndex = visitingItem.children.findIndex((child) => child.id === droppedOnItemId);
-
-          if (currentItemIndex === -1) {
-            break;
-          }
-
-          const currentItem = visitingItem.children[currentItemIndex];
-
-          if (!currentItem) {
-            break;
-          }
-
-          const isLastId = i === droppedBelowItemIdsPath.length - 2;
-
-          if (isLastId) {
-            currentItem.children = visitingItem.children.filter((child) => child.id !== droppedOnItemId);
-            draggedItem = currentItem;
-            break;
-          }
-
-          visitingItem = currentItem;
-        }
-
-        debugger;
-
-        const lastDroppedOnId = droppedBelowItemIdsPath[droppedBelowItemIdsPath.length - 1];
-
-        if (droppedOnParentItem) {
-          const droppedOnIndex = droppedOnParentItem.children?.findIndex((child) => child.id === lastDroppedOnId);
-
-          if (droppedOnIndex === undefined || droppedOnIndex === -1) {
-            throw new Error(`Cannot find dropped-on item with id ${lastDroppedOnId}`);
-          }
-
-          droppedOnParentItem.children?.splice(droppedOnIndex + 1, 0, draggedItem);
-        } else {
-          const droppedOnIndex = updatedItems.findIndex((item) => item.id === lastDroppedOnId);
-
-          if (droppedOnIndex === -1) {
-            throw new Error(`Cannot find dropped-on item with id ${lastDroppedOnId}`);
-          }
-
-          updatedItems.splice(droppedOnIndex + 1, 0, draggedItem);
-        }
+        const updatedItems = placeItemsBeforeTarget(prevItems, idKey, draggedItemIdsPath, droppedBelowItemIdsPath);
 
         setItems(updatedItems);
 
@@ -151,10 +52,18 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
       }
 
       case 'over': {
-        const { droppedOnItemId, draggedItemIdsPath } = itemDropEvent;
+        const { droppedOnItemId, draggedItemIdsPath, droppedOnItemIdsPath } = itemDropEvent;
+
+        const nodeIsDroppedOnItself =
+          draggedItemIdsPath.length === droppedOnItemIdsPath.length &&
+          draggedItemIdsPath.every((id, index) => id === droppedOnItemIdsPath[index]);
+
+        if (nodeIsDroppedOnItself) {
+          return;
+        }
 
         setItems((prevItems) => {
-          const droppedOnIndex = prevItems.findIndex((item) => item.id === droppedOnItemId);
+          const droppedOnIndex = prevItems.findIndex((item) => item[idKey] === droppedOnItemId);
 
           if (droppedOnIndex === -1) {
             return prevItems;
@@ -167,7 +76,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
 
           function removeItemRecursively(items: Item[], idsPath: string[]): Item[] {
             return items.filter((item) => {
-              if (item.id === idsPath[0]) {
+              if (item[idKey] === idsPath[0]) {
                 if (idsPath.length === 1) {
                   draggedItem = item;
                   return false; // Remove this item
@@ -188,7 +97,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
           // Insert dragged item as a child of the dropped-on item
           function insertItemRecursively(items: Item[]): Item[] {
             return items.map((item) => {
-              if (item.id === droppedOnItemId) {
+              if (item[idKey] === droppedOnItemId) {
                 const children = item.children ? [...item.children, draggedItem!] : [draggedItem!];
                 return { ...item, children };
               } else if (item.children) {
@@ -207,15 +116,12 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
   }, []);
 
   return (
-    <div
-      className="p-4 rounded bg-gray-900 max-h-[600px] overflow-y-auto"
-      style={{ '--cpl-dnd-sort-list-item-height': '50px' } as React.CSSProperties}
-      /*  onDragStart={suppressNativeDrag} */
-    >
+    <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
       <div className="sortable-list flex flex-col">
         {flatItems.map((item) => (
           <DraggableListItem
-            key={item.id}
+            key={item[idKey]}
+            idKey={idKey}
             item={item}
             onItemDrop={handleItemDrop}
             draggingItemId={draggingItemId}
@@ -245,41 +151,47 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
   );
 };
 
-type HandleItemDropEvent =
-  | { kind: 'below'; draggedItemIdsPath: string[]; droppedBelowItemIdsPath: string[] }
-  | { kind: 'over'; draggedItemIdsPath: string[]; droppedOnItemId: string };
+type HandleItemDropEvent<T, K extends keyof T> =
+  | { kind: 'below'; draggedItemIdsPath: T[K][]; droppedBelowItemIdsPath: T[K][] }
+  | { kind: 'over'; draggedItemIdsPath: T[K][]; droppedOnItemId: T[K]; droppedOnItemIdsPath: T[K][] };
 
-function DraggableListItem({
+function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
+  idKey,
   item,
   onItemDrop,
   draggingItemId,
   onDraggingItemId,
   children,
   className,
+  childLevelMarginStep = 16,
 }: {
-  item: FlattenTreeNode<Item, 'id'>;
-  onItemDrop: (handleItemDropEvent: HandleItemDropEvent) => void;
-  draggingItemId: string | null;
-  onDraggingItemId: (id: string | null) => void;
+  idKey: K;
+  item: FlattenTreeNode<T, K>;
+  onItemDrop: (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
+  draggingItemId: T[K] | null;
+  onDraggingItemId: (id: T[K] | null) => void;
   children: ReactNode;
   className?: string;
+  /**
+   * @default 16
+   */
+  childLevelMarginStep?: number;
 }) {
   // const [isDragging, setIsDragging] = useState(false);
 
-  const isDragging = draggingItemId === item.id;
+  const isDragging = draggingItemId === item[idKey];
 
   const isParentDroppable = Boolean(item.children?.length);
 
   return (
-    <Fragment key={item.id}>
+    <Fragment key={String(item[idKey])}>
       <div
-        key={item.id}
         className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
-        style={{ paddingLeft: item.level * 16 }}
+        style={{ paddingLeft: item.level * childLevelMarginStep, cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
           // setIsDragging(true);
-          onDraggingItemId(item.id);
+          onDraggingItemId(item[idKey]);
           event.dataTransfer.setData(ITEM_DATA_TRANSFER_KEY, JSON.stringify(item));
         }}
         onDragEnd={(event) => {
@@ -315,8 +227,8 @@ function DraggableListItem({
                 droppableListItem.classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
 
                 const draggedItem = JSON.parse(event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY)) as FlattenTreeNode<
-                  Item,
-                  'id'
+                  T,
+                  K
                 >;
 
                 if (!draggedItem) {
@@ -326,7 +238,8 @@ function DraggableListItem({
                 onItemDrop({
                   kind: 'over',
                   draggedItemIdsPath: draggedItem.ids,
-                  droppedOnItemId: item.id,
+                  droppedOnItemId: item[idKey],
+                  droppedOnItemIdsPath: item.ids,
                 });
 
                 event.dataTransfer.clearData();
@@ -365,7 +278,7 @@ function DraggableListItem({
                 return;
               }
 
-              const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<Item, 'id'>;
+              const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
 
               onItemDrop({
                 kind: 'below',
