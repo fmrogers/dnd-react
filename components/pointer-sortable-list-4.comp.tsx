@@ -2,8 +2,7 @@
 
 import { FlattenTreeNode, flattenTreeWithExpandedState, isExpanded } from '@/app/utilities/flatten-tree-2';
 import clsx from 'clsx';
-import { DragEvent, Fragment, ReactNode, useCallback, useMemo, useState, type FC } from 'react';
-import { DragOverlay4 } from './drag-overlay-4.comp';
+import { DragEvent, Fragment, ReactNode, RefObject, useCallback, useMemo, useRef, useState, type FC } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget } from './list-4.utils';
 import styles from './pointer-sortable-list.module.css';
 import { Item } from './types';
@@ -58,6 +57,8 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
     }
   }, []);
 
+  const draggableElementOverlayRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
       className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto"
@@ -66,7 +67,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
       // }}
     >
       <div className="sortable-list flex flex-col">
-        {draggingItemId && <DragOverlay4 item={itemsIdMap.get(draggingItemId)} />}
+        {/* <DragOverlay4 item={itemsIdMap.get(draggingItemId ?? '')} ref3={draggableElementOverlayRef} /> */}
         {flatItems.map((item) => {
           const id = item[idKey];
 
@@ -79,6 +80,7 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
               draggingItemId={draggingItemId}
               onDraggingItemId={setDraggingItemId}
               className="w-120"
+              draggableElementOverlayRef={draggableElementOverlayRef}
             >
               <div
                 className={clsx(
@@ -126,6 +128,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
   children,
   className,
   childLevelMarginStep = 16,
+  draggableElementOverlayRef,
 }: {
   idKey: K;
   item: FlattenTreeNode<T, K>;
@@ -138,6 +141,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
    * @default 16
    */
   childLevelMarginStep?: number;
+  draggableElementOverlayRef?: RefObject<HTMLDivElement | null>;
 }) {
   // const [isDragging, setIsDragging] = useState(false);
 
@@ -151,12 +155,40 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
         className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
         style={{ paddingLeft: item.level * childLevelMarginStep, cursor: 'grab' }}
         draggable={true}
-        onDragStart={(event) => {
+        onDragStartCapture={(event) => {
           // setIsDragging(true);
           onDraggingItemId(item[idKey]);
-          console.log(event);
-          console.log(event.target.clientTop);
-          console.log(event.target.clientLeft);
+          // console.log(event);
+          // console.log(event.target.clientTop);
+          // console.log(event.target.clientLeft);
+          // console.log(draggableElementOverlayRef);
+          // if (draggableElementOverlayRef?.current) {
+          //   event.preventDefault();
+          //   draggableElementOverlayRef.current.dispatchEvent(
+          //     new DragEvent('dragstart', {
+          //       bubbles: true,
+          //       cancelable: true,
+          //       dataTransfer: event.dataTransfer,
+          //       clientX: event.clientX,
+          //       clientY: event.clientY,
+          //       movementX: event.movementX,
+          //       movementY: event.movementY,
+          //       screenX: event.screenX,
+          //       screenY: event.screenY,
+          //       view: event.view,
+          //       altKey: event.altKey,
+          //       ctrlKey: event.ctrlKey,
+          //       metaKey: event.metaKey,
+          //       shiftKey: event.shiftKey,
+          //       button: event.button,
+          //       buttons: event.buttons,
+          //       composed: event.composed,
+          //       detail: event.detail,
+          //       relatedTarget: event.relatedTarget,
+          //     }),
+          //   );
+          // }
+          // new DragEvent('dragstart', {});
           event.dataTransfer.setData(ITEM_DATA_TRANSFER_KEY, JSON.stringify(item));
         }}
         onDragEnd={(event) => {
