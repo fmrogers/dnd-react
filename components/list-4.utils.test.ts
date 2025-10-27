@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveItemAsChild, placeItemsBeforeTarget } from './list-4.utils';
+import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 
 interface TestItem {
   id: string;
@@ -562,6 +562,202 @@ describe('moveItemAsChild', () => {
           ['1', '1-1', '1-1-1'], // Its own grandchild
         );
       }).toThrow('Cannot move item: would create circular dependency');
+    });
+  });
+});
+
+describe('placeItemsBeforeTargetActually', () => {
+  const createTestData = (): TestItem[] => [
+    {
+      id: '1',
+      content: 'Iron Man',
+      children: [
+        { id: '1-1', content: 'Mark I Armor' },
+        { id: '1-2', content: 'Mark 50 Armor' },
+        { id: '1-3', content: 'Arc Reactor' },
+      ],
+    },
+    {
+      id: '2',
+      content: 'Captain America',
+      children: [
+        { id: '2-1', content: 'Vibranium Shield' },
+        { id: '2-2', content: 'Super Soldier Serum' },
+      ],
+    },
+    { id: '3', content: 'Black Widow' },
+    { id: '4', content: 'Hawkeye' },
+    { id: '5', content: 'Thor' },
+  ];
+
+  describe('Root level operations', () => {
+    it('should move item to position 0 (before first item)', () => {
+      const items = createTestData();
+
+      // Drag Black Widow (3) and drop it before Iron Man (1)
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['3'], // Black Widow's path
+        ['1'], // Drop before Iron Man
+      );
+
+      expect(result).toHaveLength(5);
+      expect(result[0].id).toBe('3'); // Black Widow (moved to first position)
+      expect(result[1].id).toBe('1'); // Iron Man
+      expect(result[2].id).toBe('2'); // Captain America
+      expect(result[3].id).toBe('4'); // Hawkeye
+      expect(result[4].id).toBe('5'); // Thor
+    });
+
+    it('should move item to middle position (before target)', () => {
+      const items = createTestData();
+
+      // Drag Thor (5) and drop it before Black Widow (3)
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['5'], // Thor's path
+        ['3'], // Drop before Black Widow
+      );
+
+      expect(result).toHaveLength(5);
+      expect(result[0].id).toBe('1'); // Iron Man
+      expect(result[1].id).toBe('2'); // Captain America
+      expect(result[2].id).toBe('5'); // Thor (moved before Black Widow)
+      expect(result[3].id).toBe('3'); // Black Widow
+      expect(result[4].id).toBe('4'); // Hawkeye
+    });
+
+    it('should move item from beginning to before last item', () => {
+      const items = createTestData();
+
+      // Drag Iron Man (1) and drop it before Thor (5)
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['1'], // Iron Man's path
+        ['5'], // Drop before Thor
+      );
+
+      expect(result).toHaveLength(5);
+      expect(result[0].id).toBe('2'); // Captain America
+      expect(result[1].id).toBe('3'); // Black Widow
+      expect(result[2].id).toBe('4'); // Hawkeye
+      expect(result[3].id).toBe('1'); // Iron Man (moved before Thor)
+      expect(result[4].id).toBe('5'); // Thor
+    });
+  });
+
+  describe('Child level operations', () => {
+    it('should move child item before sibling within same parent', () => {
+      const items = createTestData();
+
+      // Move Arc Reactor before Mark I Armor within Iron Man's children
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['1', '1-3'], // Arc Reactor path
+        ['1', '1-1'], // Drop before Mark I Armor
+      );
+
+      const ironMan = result.find((item) => item.id === '1');
+      expect(ironMan?.children).toHaveLength(3);
+      expect(ironMan?.children?.[0].id).toBe('1-3'); // Arc Reactor (moved to first)
+      expect(ironMan?.children?.[1].id).toBe('1-1'); // Mark I Armor
+      expect(ironMan?.children?.[2].id).toBe('1-2'); // Mark 50 Armor
+    });
+
+    it('should move child from one parent to before child in another parent', () => {
+      const items = createTestData();
+
+      // Move Arc Reactor from Iron Man to before Vibranium Shield in Captain America
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['1', '1-3'], // Arc Reactor path (from Iron Man)
+        ['2', '2-1'], // Drop before Vibranium Shield (in Captain America)
+      );
+
+      // Check Iron Man's children (should have one less)
+      const ironMan = result.find((item) => item.id === '1');
+      expect(ironMan?.children).toHaveLength(2);
+      expect(ironMan?.children?.some((child) => child.id === '1-3')).toBe(false);
+
+      // Check Captain America's children (should have one more at beginning)
+      const captainAmerica = result.find((item) => item.id === '2');
+      expect(captainAmerica?.children).toHaveLength(3);
+      expect(captainAmerica?.children?.[0].id).toBe('1-3'); // Arc Reactor (moved here)
+      expect(captainAmerica?.children?.[1].id).toBe('2-1'); // Vibranium Shield
+      expect(captainAmerica?.children?.[2].id).toBe('2-2'); // Super Soldier Serum
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should return original items when dragged item is not found', () => {
+      const items = createTestData();
+
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['non-existent'], // Invalid dragged item
+        ['1'],
+      );
+
+      expect(result).toEqual(items);
+    });
+
+    it('should throw error when target item is not found', () => {
+      const items = createTestData();
+
+      expect(() => {
+        placeItemsBeforeTargetActually(
+          items,
+          'id',
+          ['1'], // Valid dragged item
+          ['non-existent'], // Invalid target
+        );
+      }).toThrow('Cannot find target item with id non-existent');
+    });
+
+    it('should throw error when child dragged item path is invalid', () => {
+      const items = createTestData();
+
+      expect(() => {
+        placeItemsBeforeTargetActually(
+          items,
+          'id',
+          ['1', 'non-existent'], // Invalid child path
+          ['2'],
+        );
+      }).toThrow('Cannot find dragged item with id non-existent');
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle moving item before itself (should be no-op)', () => {
+      const items = createTestData();
+
+      const result = placeItemsBeforeTargetActually(
+        items,
+        'id',
+        ['3'], // Black Widow
+        ['3'], // Drop before itself
+      );
+
+      // Should be unchanged
+      expect(result.map((item) => item.id)).toEqual(['1', '2', '3', '4', '5']);
+    });
+
+    it('should preserve item structure and content', () => {
+      const items = createTestData();
+
+      const result = placeItemsBeforeTargetActually(items, 'id', ['1'], ['3']);
+
+      const movedIronMan = result.find((item) => item.id === '1');
+      expect(movedIronMan?.content).toBe('Iron Man');
+      expect(movedIronMan?.children).toHaveLength(3);
+      expect(movedIronMan?.children?.[0].content).toBe('Mark I Armor');
     });
   });
 });

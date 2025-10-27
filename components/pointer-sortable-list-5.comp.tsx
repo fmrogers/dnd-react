@@ -4,7 +4,7 @@ import { TreeNode } from '@/app/utilities/build-tree-node';
 import { FlattenTreeNode, isExpanded } from '@/app/utilities/flatten-tree-2';
 import clsx from 'clsx';
 import { DragEvent, Fragment, useCallback, useMemo, useState, type FC } from 'react';
-import { moveItemAsChild, placeItemsBeforeTarget } from './list-4.utils';
+import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 import styles from './pointer-sortable-list-5.module.css';
 import { Item } from './types';
 
@@ -15,6 +15,8 @@ interface PointerSortableListProps {
 const idKey = 'id';
 
 export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) => {
+  const [clickedItem, setClickedItem] = useState<Item | null>(null);
+
   const itemsIdMap = useMemo(() => {
     const map = new Map<string, Item>();
 
@@ -29,115 +31,158 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
 
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
 
-  const handleItemDrop = useCallback((itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
-    const { kind } = itemDropEvent;
+  const handleItemDrop = useCallback(
+    (itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
+      const { kind } = itemDropEvent;
 
-    console.log('Dropped:', itemDropEvent);
+      console.log('Dropped:', itemDropEvent);
 
-    switch (kind) {
-      case 'below': {
-        const { draggedItemIdsPath, droppedBelowItemIdsPath } = itemDropEvent;
+      switch (kind) {
+        case 'below': {
+          const { draggedItemIdsPath, droppedBelowItemIdsPath } = itemDropEvent;
 
-        const updatedItems = placeItemsBeforeTarget(items, idKey, draggedItemIdsPath, droppedBelowItemIdsPath);
+          const updatedItems = placeItemsBeforeTarget(items, idKey, draggedItemIdsPath, droppedBelowItemIdsPath);
 
-        setItems(updatedItems);
+          setItems(updatedItems);
 
-        break;
+          break;
+        }
+
+        case 'over': {
+          const { draggedItemIdsPath, droppedOnItemIdsPath } = itemDropEvent;
+
+          const updatedItems = moveItemAsChild(items, idKey, draggedItemIdsPath, droppedOnItemIdsPath);
+          setItems(updatedItems);
+
+          break;
+        }
+
+        case 'above': {
+          const { draggedItemIdsPath, droppedAboveItemIdsPath } = itemDropEvent;
+
+          const updatedItems = placeItemsBeforeTargetActually(
+            items,
+            idKey,
+            draggedItemIdsPath,
+            droppedAboveItemIdsPath,
+          );
+
+          setItems(updatedItems);
+
+          break;
+        }
       }
-
-      case 'over': {
-        const { draggedItemIdsPath, droppedOnItemIdsPath } = itemDropEvent;
-
-        const updatedItems = moveItemAsChild(items, idKey, draggedItemIdsPath, droppedOnItemIdsPath);
-        setItems(updatedItems);
-
-        break;
-      }
-    }
-  }, []);
+    },
+    [items, idKey],
+  );
 
   return (
-    <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-      <div className="sortable-list flex flex-col">
-        {items.map((item, index) => {
-          return (
-            <DraggableListItem
-              key={item[idKey]}
-              idKey={idKey}
-              allowPlacementBeforeSelf={index === 0}
-              item={item}
-              expandedState={expandedState}
-              onItemDrop={handleItemDrop}
-              draggingItemId={draggingItemId}
-              onDraggingItemId={setDraggingItemId}
-              className="w-120"
-              renderItem={({ item }) => {
-                const id = item[idKey];
+    <>
+      <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
+        <div className="sortable-list flex flex-col">
+          {items.map((item, index) => {
+            return (
+              <DraggableListItem
+                key={item[idKey]}
+                idKey={idKey}
+                allowPlacementBeforeSelf={index === 0 || !!item.children?.length}
+                item={item}
+                expandedState={expandedState}
+                onItemDrop={handleItemDrop}
+                // draggingItemId={draggingItemId}
+                // onDraggingItemId={setDraggingItemId}
+                className="w-120"
+                renderItem={({ item, isDragging }) => {
+                  const id = item[idKey];
 
-                return (
-                  <div
-                    className={clsx(
-                      'px-3',
-                      'py-2',
-                      'rounded',
-                      'border-2',
-                      'border-slate-500',
-                      'bg-slate-700',
-                      'flex',
-                      'items-center',
-                      'gap-3',
-                    )}
-                  >
-                    {item.children?.length && (
+                  return (
+                    <div
+                      className={clsx(
+                        'px-3',
+                        'py-2',
+                        'rounded',
+                        'border-2',
+                        'border-slate-500',
+                        'bg-slate-700',
+                        'flex',
+                        'items-center',
+                        'gap-3',
+                      )}
+                    >
+                      {item.children?.length ? (
+                        <button
+                          style={{ width: 16 }}
+                          onClick={() => {
+                            setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
+                          }}
+                        >
+                          {isExpanded(expandedState, id) ? 'V' : '>'}
+                        </button>
+                      ) : (
+                        <div style={{ width: 16 }} />
+                      )}
                       <button
-                        onClick={() => {
-                          setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
+                        className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setClickedItem(item);
                         }}
+                        onDrag={(event) => event.preventDefault()}
                       >
-                        {isExpanded(expandedState, id) ? 'COL' : 'EXP'}
+                        {item.content}
                       </button>
-                    )}
-                    <div className={clsx('flex-1', 'min-w-0', 'select-none')}>{item.content}</div>
-                    {draggingItemId === id && !!item.children?.length && (
-                      <span className="text-sm italic">({item.children?.length} items)</span>
-                    )}
-                  </div>
-                );
-              }}
-            ></DraggableListItem>
-          );
-        })}
+                      {isDragging && !!item.children?.length && (
+                        <span className="text-sm italic">({item.children?.length} items)</span>
+                      )}
+                    </div>
+                  );
+                }}
+              ></DraggableListItem>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <div className="w-64 ml-4">
+        {clickedItem && (
+          <>
+            <button onClick={() => setClickedItem(null)}>Close</button>
+            <br />
+            Clicked on: <pre>{JSON.stringify(clickedItem.content, null, 2)}</pre>
+          </>
+        )}
+      </div>
+    </>
   );
 };
 
 type HandleItemDropEvent<T, K extends keyof T> =
   | { kind: 'below'; draggedItemIdsPath: T[K][]; droppedBelowItemIdsPath: T[K][] }
+  | { kind: 'above'; draggedItemIdsPath: T[K][]; droppedAboveItemIdsPath: T[K][] }
   | { kind: 'over'; draggedItemIdsPath: T[K][]; droppedOnItemId: T[K]; droppedOnItemIdsPath: T[K][] };
+
+type OnItemDrop<T, K extends keyof T> = (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
 
 function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
   idKey,
   item,
   onItemDrop,
-  draggingItemId,
-  onDraggingItemId,
   expandedState,
   className,
   renderItem,
   allowPlacementBeforeSelf,
+  allowDropping = true,
   level = 0,
   ids = [item[idKey]],
   childLevelMarginStep = 16,
 }: {
   idKey: K;
   item: TreeNode<T>;
-  onItemDrop: (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
-  draggingItemId: T[K] | null;
-  onDraggingItemId: (id: T[K] | null) => void;
+  onItemDrop: OnItemDrop<T, K>;
   expandedState: Record<string, boolean>;
-  renderItem: ({ item }: { item: TreeNode<T> }) => React.ReactNode;
+  renderItem: ({ item, isDragging }: { item: TreeNode<T>; isDragging: boolean }) => React.ReactNode;
   allowPlacementBeforeSelf: boolean;
+  allowDropping?: boolean;
   className?: string;
   level?: number;
   ids?: T[K][];
@@ -146,65 +191,39 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
    */
   childLevelMarginStep?: number;
 }) {
-  const isDragging = draggingItemId === item[idKey];
+  // const isDragging = draggingItemId === item[idKey];
+  const [isDragging, setIsDragging] = useState(false);
+
+  console.log(isDragging);
 
   return (
     <Fragment key={String(item[idKey])}>
-      {allowPlacementBeforeSelf && (
-        <div
-          className={clsx(styles.dividerWrapper)}
-          style={{ paddingLeft: level * childLevelMarginStep }}
-          {...{
-            onDragOver: (event) => {
-              // This enables dropping
-              event.preventDefault();
-            },
-            onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-              console.log(event);
-
-              (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-            },
-            onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-            },
-            onDrop: (event: DragEvent<HTMLDivElement>) => {
-              event.preventDefault();
-
-              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-
-              const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
-
-              if (!draggedItemData) {
-                return;
-              }
-
-              const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
-
-              onItemDrop({
-                kind: 'below',
-                draggedItemIdsPath: draggedItem.ids,
-                droppedBelowItemIdsPath: ids,
-              });
-
-              event.dataTransfer.clearData();
-            },
-          }}
-        />
-      )}
+      {allowPlacementBeforeSelf ? (
+        allowDropping ? (
+          <Divider
+            childLevelMarginStep={childLevelMarginStep}
+            ids={ids}
+            level={level}
+            onItemDrop={onItemDrop}
+            direction="above"
+          />
+        ) : (
+          <div className={styles.dividerWrapper} />
+        )
+      ) : null}
       <div
         className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
         style={{ paddingLeft: level * childLevelMarginStep, cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
-          onDraggingItemId(item[idKey]);
+          setIsDragging(true);
           event.dataTransfer.setData(ITEM_DATA_TRANSFER_KEY, JSON.stringify({ ...item, ids }));
         }}
         onDragEnd={(event) => {
-          onDraggingItemId(null);
+          setIsDragging(false);
           event.dataTransfer.clearData();
         }}
-        data-is-dragging={isDragging ? 'true' : 'false'}
-        {...(true
+        {...(allowDropping && !isDragging
           ? {
               onDragOver: (event) => {
                 // This enables dropping
@@ -254,59 +273,30 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
             }
           : {})}
       >
-        {renderItem({ item })}
+        {renderItem({ item, isDragging })}
       </div>
-      <div
-        className={clsx(styles.dividerWrapper)}
-        style={{ paddingLeft: level * childLevelMarginStep }}
-        {...{
-          onDragOver: (event) => {
-            // This enables dropping
-            event.preventDefault();
-          },
-          onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-            console.log(event);
-
-            (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-          },
-          onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-          },
-          onDrop: (event: DragEvent<HTMLDivElement>) => {
-            event.preventDefault();
-
-            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-
-            const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
-
-            if (!draggedItemData) {
-              return;
-            }
-
-            const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
-
-            onItemDrop({
-              kind: 'below',
-              draggedItemIdsPath: draggedItem.ids,
-              droppedBelowItemIdsPath: ids,
-            });
-
-            event.dataTransfer.clearData();
-          },
-        }}
-      />
-      {item.children?.length &&
+      {allowDropping && !item.children?.length ? (
+        <Divider
+          childLevelMarginStep={childLevelMarginStep}
+          ids={ids}
+          level={level}
+          onItemDrop={onItemDrop}
+          direction="below"
+        />
+      ) : null}
+      {!!item.children?.length &&
         isExpanded(expandedState, item[idKey]) &&
         item.children.map((item, index) => {
           return (
             <DraggableListItem
               key={String(item[idKey])}
               idKey={idKey}
+              allowDropping={allowDropping && !isDragging}
               allowPlacementBeforeSelf={index === 0}
               item={item}
               onItemDrop={onItemDrop}
-              draggingItemId={draggingItemId}
-              onDraggingItemId={onDraggingItemId}
+              // draggingItemId={draggingItemId}
+              // onDraggingItemId={onDraggingItemId}
               expandedState={expandedState}
               className="w-120"
               renderItem={renderItem}
@@ -316,6 +306,68 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           );
         })}
     </Fragment>
+  );
+}
+
+function Divider<T, K extends keyof T>({
+  level,
+  childLevelMarginStep,
+  ids,
+  onItemDrop,
+  direction,
+}: {
+  level: number;
+  childLevelMarginStep: number;
+  onItemDrop: OnItemDrop<T, K>;
+  ids: T[K][];
+  direction: 'above' | 'below';
+}) {
+  return (
+    <div
+      className={clsx(styles.dividerWrapper)}
+      style={{ paddingLeft: level * childLevelMarginStep }}
+      {...{
+        onDragOver: (event) => {
+          // This enables dropping
+          event.preventDefault();
+        },
+        onDragEnter: (event: DragEvent<HTMLDivElement>) => {
+          (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+        },
+        onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+        },
+        onDrop: (event: DragEvent<HTMLDivElement>) => {
+          event.preventDefault();
+
+          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+
+          const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
+
+          if (!draggedItemData) {
+            return;
+          }
+
+          const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
+
+          if (direction === 'above') {
+            onItemDrop({
+              kind: direction,
+              draggedItemIdsPath: draggedItem.ids,
+              droppedAboveItemIdsPath: ids,
+            });
+          } else {
+            onItemDrop({
+              kind: direction,
+              draggedItemIdsPath: draggedItem.ids,
+              droppedBelowItemIdsPath: ids,
+            });
+          }
+
+          event.dataTransfer.clearData();
+        },
+      }}
+    />
   );
 }
 
