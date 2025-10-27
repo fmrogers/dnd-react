@@ -3,14 +3,10 @@
 import { FlattenTreeNode, flattenTreeWithExpandedState, isExpanded } from '@/app/utilities/flatten-tree-2';
 import clsx from 'clsx';
 import { DragEvent, Fragment, ReactNode, useCallback, useMemo, useState, type FC } from 'react';
+import { DragOverlay4 } from './drag-overlay-4.comp';
 import { moveItemAsChild, placeItemsBeforeTarget } from './list-4.utils';
 import styles from './pointer-sortable-list.module.css';
-
-interface Item {
-  id: string;
-  content: string;
-  children?: Item[];
-}
+import { Item } from './types';
 
 interface PointerSortableListProps {
   initial: Item[];
@@ -63,49 +59,56 @@ export const PointerSortableList4: FC<PointerSortableListProps> = ({ initial }) 
   }, []);
 
   return (
-    <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
+    <div
+      className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto"
+      // onScroll={(event) => {
+      //   console.log((event.target.querySelector("[data-is-dragging='true']") as HTMLDivElement)?.remove());
+      // }}
+    >
       <div className="sortable-list flex flex-col">
-        {flatItems.map((item) => (
-          <DraggableListItem
-            key={item[idKey]}
-            idKey={idKey}
-            item={item}
-            onItemDrop={handleItemDrop}
-            draggingItemId={draggingItemId}
-            onDraggingItemId={setDraggingItemId}
-            className="w-120"
-          >
-            <div
-              className={clsx(
-                'px-3',
-                'py-2',
-                'rounded',
-                'border-2',
-                'border-slate-500',
-                'bg-slate-700',
-                'flex',
-                'items-center',
-                'gap-3',
-              )}
+        {draggingItemId && <DragOverlay4 item={itemsIdMap.get(draggingItemId)} />}
+        {flatItems.map((item) => {
+          const id = item[idKey];
+
+          return (
+            <DraggableListItem
+              key={id}
+              idKey={idKey}
+              item={item}
+              onItemDrop={handleItemDrop}
+              draggingItemId={draggingItemId}
+              onDraggingItemId={setDraggingItemId}
+              className="w-120"
             >
-              {item.children?.length && (
-                <button
-                  onClick={() => {
-                    setExpandedState((prev) => ({ ...prev, [String(item[idKey])]: !isExpanded(prev, item[idKey]) }));
-                  }}
-                >
-                  {isExpanded(expandedState, item[idKey]) ? 'COL' : 'EXP'}
-                </button>
-              )}
-              <div className={clsx('flex-1', 'min-w-0', 'select-none')}>{item.content}</div>
-              {draggingItemId === item[idKey] && (
-                <span className="text-sm italic">({item.children?.length} items)</span>
-              )}
-            </div>
-          </DraggableListItem>
-        ))}
+              <div
+                className={clsx(
+                  'px-3',
+                  'py-2',
+                  'rounded',
+                  'border-2',
+                  'border-slate-500',
+                  'bg-slate-700',
+                  'flex',
+                  'items-center',
+                  'gap-3',
+                )}
+              >
+                {item.children?.length && (
+                  <button
+                    onClick={() => {
+                      setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
+                    }}
+                  >
+                    {isExpanded(expandedState, id) ? 'COL' : 'EXP'}
+                  </button>
+                )}
+                <div className={clsx('flex-1', 'min-w-0', 'select-none')}>{item.content}</div>
+                {draggingItemId === id && <span className="text-sm italic">({item.children?.length} items)</span>}
+              </div>
+            </DraggableListItem>
+          );
+        })}
       </div>
-      {/* <DragOverlay drag={drag} renderContent={(id) => items.find((item) => item.id === id)?.content} /> */}
     </div>
   );
 };
@@ -151,6 +154,9 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
         onDragStart={(event) => {
           // setIsDragging(true);
           onDraggingItemId(item[idKey]);
+          console.log(event);
+          console.log(event.target.clientTop);
+          console.log(event.target.clientLeft);
           event.dataTransfer.setData(ITEM_DATA_TRANSFER_KEY, JSON.stringify(item));
         }}
         onDragEnd={(event) => {
@@ -158,6 +164,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           onDraggingItemId(null);
           event.dataTransfer.clearData();
         }}
+        data-is-dragging={isDragging ? 'true' : 'false'}
         {...(true
           ? {
               onDragOver: (event) => {
