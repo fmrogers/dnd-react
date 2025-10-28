@@ -29,7 +29,7 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
-  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  // const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
 
   const handleItemDrop = useCallback(
     (itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
@@ -85,7 +85,7 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
               <DraggableListItem
                 key={item[idKey]}
                 idKey={idKey}
-                allowPlacementBeforeSelf={index === 0 || !!item.children?.length}
+                allowPlacementBeforeSelf={index === 0}
                 item={item}
                 expandedState={expandedState}
                 onItemDrop={handleItemDrop}
@@ -194,22 +194,17 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
   // const isDragging = draggingItemId === item[idKey];
   const [isDragging, setIsDragging] = useState(false);
 
-  console.log(isDragging);
-
   return (
     <Fragment key={String(item[idKey])}>
       {allowPlacementBeforeSelf ? (
-        allowDropping ? (
-          <Divider
-            childLevelMarginStep={childLevelMarginStep}
-            ids={ids}
-            level={level}
-            onItemDrop={onItemDrop}
-            direction="above"
-          />
-        ) : (
-          <div className={styles.dividerWrapper} />
-        )
+        <Divider
+          childLevelMarginStep={childLevelMarginStep}
+          ids={ids}
+          level={level}
+          onItemDrop={onItemDrop}
+          direction="above"
+          disabled={isDragging || !allowDropping}
+        />
       ) : null}
       <div
         className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
@@ -223,65 +218,65 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           setIsDragging(false);
           event.dataTransfer.clearData();
         }}
-        {...(allowDropping && !isDragging
-          ? {
-              onDragOver: (event) => {
-                // This enables dropping
-                event.preventDefault();
-              },
-              onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-                getDroppableListItem(event)?.classList.add(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
-              },
-              onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-                const targetIsListItem = (event.target as HTMLDivElement).classList.contains(CPL_DRAG_ITEM_CLASS_NAME);
+        {...(isDragging && { 'data-is-dragging': isDragging })}
+        {...(allowDropping &&
+          !isDragging && {
+            onDragOver: (event) => {
+              // This enables dropping
+              event.preventDefault();
+            },
+            onDragEnter: (event: DragEvent<HTMLDivElement>) => {
+              getDroppableListItem(event)?.classList.add(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
+            },
+            onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+              const targetIsListItem = (event.target as HTMLDivElement).classList.contains(CPL_DRAG_ITEM_CLASS_NAME);
+              if (targetIsListItem) {
+                (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
+              }
+            },
+            onDrop: (event: DragEvent<HTMLDivElement>) => {
+              event.preventDefault();
 
-                if (targetIsListItem) {
-                  (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
-                }
-              },
-              onDrop: (event: DragEvent<HTMLDivElement>) => {
-                event.preventDefault();
+              const droppableListItem = getDroppableListItem(event);
 
-                const droppableListItem = getDroppableListItem(event);
+              if (!droppableListItem) {
+                return;
+              }
 
-                if (!droppableListItem) {
-                  return;
-                }
+              droppableListItem.classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
 
-                droppableListItem.classList.remove(CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME);
+              const draggedItem = JSON.parse(event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY)) as FlattenTreeNode<
+                T,
+                K
+              >;
 
-                const draggedItem = JSON.parse(event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY)) as FlattenTreeNode<
-                  T,
-                  K
-                >;
+              console.log('Dragged item:', draggedItem);
 
-                console.log('Dragged item:', draggedItem);
+              if (!draggedItem) {
+                return;
+              }
 
-                if (!draggedItem) {
-                  return;
-                }
+              onItemDrop({
+                kind: 'over',
+                draggedItemIdsPath: draggedItem.ids,
+                droppedOnItemId: item[idKey],
+                droppedOnItemIdsPath: ids,
+              });
 
-                onItemDrop({
-                  kind: 'over',
-                  draggedItemIdsPath: draggedItem.ids,
-                  droppedOnItemId: item[idKey],
-                  droppedOnItemIdsPath: ids,
-                });
-
-                event.dataTransfer.clearData();
-              },
-            }
-          : {})}
+              event.dataTransfer.clearData();
+            },
+          })}
       >
         {renderItem({ item, isDragging })}
       </div>
-      {allowDropping && !item.children?.length ? (
+      {!item.children?.length ? (
         <Divider
           childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
           direction="below"
+          disabled={isDragging || !allowDropping}
         />
       ) : null}
       {!!item.children?.length &&
@@ -305,6 +300,16 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
             />
           );
         })}
+      {!!item.children?.length ? (
+        <Divider
+          childLevelMarginStep={childLevelMarginStep}
+          ids={ids}
+          level={level}
+          onItemDrop={onItemDrop}
+          direction="below"
+          disabled={isDragging || !allowDropping}
+        />
+      ) : null}
     </Fragment>
   );
 }
@@ -315,17 +320,19 @@ function Divider<T, K extends keyof T>({
   ids,
   onItemDrop,
   direction,
+  disabled,
 }: {
   level: number;
   childLevelMarginStep: number;
   onItemDrop: OnItemDrop<T, K>;
   ids: T[K][];
   direction: 'above' | 'below';
+  disabled: boolean;
 }) {
   return (
     <div
       className={clsx(styles.dividerWrapper)}
-      style={{ paddingLeft: level * childLevelMarginStep }}
+      style={{ paddingLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
       {...{
         onDragOver: (event) => {
           // This enables dropping

@@ -6,6 +6,16 @@
   position: relative;
 }
 
+/**
+ * Disable dropping over previous divider using CSS to avoid
+ * being able to drop an item below the previous item (which could cause confusion).
+ * The dragging state is only available on the item being dragged, so we use the sibling selector to
+ * disable pointer events on the divider before it.
+ */
+.dividerWrapper:has(+ [data-is-dragging='true']) {
+  pointer-events: none;
+}
+
 .draggingOverListDivider {
   display: flex;
   align-items: center;
