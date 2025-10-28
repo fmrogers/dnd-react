@@ -29,8 +29,6 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
-  // const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
-
   const handleItemDrop = useCallback(
     (itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
       const { kind } = itemDropEvent;
@@ -89,8 +87,6 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
                 item={item}
                 expandedState={expandedState}
                 onItemDrop={handleItemDrop}
-                // draggingItemId={draggingItemId}
-                // onDraggingItemId={setDraggingItemId}
                 className="w-120"
                 renderItem={({ item, isDragging }) => {
                   const id = item[idKey];
@@ -137,7 +133,7 @@ export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) 
                     </div>
                   );
                 }}
-              ></DraggableListItem>
+              />
             );
           })}
         </div>
@@ -218,7 +214,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           setIsDragging(false);
           event.dataTransfer.clearData();
         }}
-        {...(isDragging && { 'data-is-dragging': isDragging })}
+        {...(isDragging && { 'data-is-dragging': true })}
         {...(allowDropping &&
           !isDragging && {
             onDragOver: (event) => {
@@ -290,8 +286,6 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
               allowPlacementBeforeSelf={index === 0}
               item={item}
               onItemDrop={onItemDrop}
-              // draggingItemId={draggingItemId}
-              // onDraggingItemId={onDraggingItemId}
               expandedState={expandedState}
               className="w-120"
               renderItem={renderItem}
@@ -332,7 +326,7 @@ function Divider<T, K extends keyof T>({
   return (
     <div
       className={clsx(styles.dividerWrapper)}
-      style={{ paddingLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
+      style={{ marginLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
       {...{
         onDragOver: (event) => {
           // This enables dropping

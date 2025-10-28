@@ -1,5 +1,4 @@
 .dividerWrapper {
-  width: 100%;
   height: calc(var(--cpl-dnd-sort-list-item-height) / 2 + 4px);
   margin: calc(var(--cpl-dnd-sort-list-item-height) / 4 * -1) 0;
   /* background-color: lightcoral; */
@@ -14,6 +13,21 @@
  */
 .dividerWrapper:has(+ [data-is-dragging='true']) {
   pointer-events: none;
+}
+
+/* CAN USE THIS TO DISTINGUISH BETWEEN GROUPED DIVIDERS */
+
+/* Divider for nested element */
+.dividerWrapper:has(+ .dividerWrapper) {
+  border: 1px solid lightcoral;
+  width: 68%;
+  transform: translateX(40%);
+}
+
+/* Divider for below parent element */
+.dividerWrapper + .dividerWrapper {
+  border: 1px solid red;
+  width: 40%;
 }
 
 .draggingOverListDivider {
