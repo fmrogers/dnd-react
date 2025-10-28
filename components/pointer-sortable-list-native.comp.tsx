@@ -79,7 +79,7 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
   return (
     <>
       <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-        <div className="sortable-list flex flex-col">
+        <div className="flex flex-col">
           {items.map((item, index) => {
             return (
               <DraggableListItem
