@@ -1,20 +1,22 @@
 'use client';
 
 import { TreeNode } from '@/app/utilities/build-tree-node';
-import { FlattenTreeNode, isExpanded } from '@/app/utilities/flatten-tree-2';
+import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
 import clsx from 'clsx';
 import { DragEvent, Fragment, useCallback, useMemo, useState, type FC } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
-import styles from './pointer-sortable-list-5.module.css';
+import styles from './pointer-sortable-list-native.module.css';
 import { Item } from './types';
 
 interface PointerSortableListProps {
   initial: Item[];
 }
 
+export type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
+
 const idKey = 'id';
 
-export const PointerSortableList5: FC<PointerSortableListProps> = ({ initial }) => {
+export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initial }) => {
   const [clickedItem, setClickedItem] = useState<Item | null>(null);
 
   const itemsIdMap = useMemo(() => {
@@ -382,3 +384,7 @@ const CPL_DRAG_ITEM_CLASS_NAME = 'cpl-dragitem';
 const CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME = styles.draggingOverListItem;
 const CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME = styles.draggingOverListDivider;
 const ITEM_DATA_TRANSFER_KEY = 'item-id';
+
+export function isExpanded(expandedState: Record<string, boolean>, id: unknown) {
+  return !objectHasOwnProperty(expandedState, String(id)) || expandedState[String(id)] === true;
+}

@@ -1,4 +1,4 @@
-import { PointerSortableList5 } from '@/components/pointer-sortable-list-5.comp';
+import { PointerSortableListNative } from '@/components/pointer-sortable-list-native.comp';
 
 export default function Home() {
   const items = [
@@ -62,7 +62,7 @@ export default function Home() {
 
   return (
     <main className="flex justify-center items-center h-screen">
-      <PointerSortableList5 initial={items} />
+      <PointerSortableListNative initial={items} />
     </main>
   );
 }
