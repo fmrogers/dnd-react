@@ -1,8 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --cpl-dnd-sort-list-item-height: 48px;
 }
 
 @theme inline {
