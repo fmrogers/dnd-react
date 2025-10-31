@@ -1,4 +1,4 @@
-import type { TreeNode } from '@/app/utilities/build-tree-node';
+import type { TreeNode } from '@/utilities/build-tree-node';
 
 export type TreeDropIntent =
   | { type: 'before'; targetId: string }
@@ -78,11 +78,7 @@ export function moveTreeNode<T extends Record<string, any>>({
 }
 
 /** Checks if candidateId node is a descendant of ancestorId node. */
-export function isDescendant<T>(
-  map: Map<string, TreeNode<T>>,
-  ancestorId: string,
-  candidateId: string,
-): boolean {
+export function isDescendant<T>(map: Map<string, TreeNode<T>>, ancestorId: string, candidateId: string): boolean {
   if (ancestorId === candidateId) return true;
   const ancestor = map.get(ancestorId);
   if (!ancestor || !ancestor.children) return false;

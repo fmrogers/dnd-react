@@ -1,4 +1,5 @@
 import { PointerSortableList } from '@/components/pointer-sortable-list.comp';
+import { mockData } from '@/mock-data';
 
 export default function Home() {
   const items = [
@@ -16,7 +17,7 @@ export default function Home() {
 
   return (
     <main className="flex justify-center items-center h-screen">
-      <PointerSortableList initial={items} />
+      <PointerSortableList initial={mockData} />
     </main>
   );
 }

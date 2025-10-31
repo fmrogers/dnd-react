@@ -1,5 +1,5 @@
-import { hasCircularDependency } from '@/app/utilities/has-circular-dependency';
-import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
+import { hasCircularDependency } from '@/utilities/has-circular-dependency';
+import { objectHasOwnProperty } from '@/utilities/object-has-own-property';
 
 export type TreeNode<T> = T & {
   children?: TreeNode<T>[];

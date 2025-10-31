@@ -4,6 +4,9 @@ import { DragOverlay } from '@/components/drag-overlay.comp';
 import { DraggableHandle } from '@/components/draggable-handle.comp';
 import { InsertionPlaceholder } from '@/components/insertion-placeholder.comp';
 import { usePointerDrag } from '@/hooks/use-pointer-drag.hook';
+import type { MockData } from '@/mock-data';
+import { buildTreeNodes } from '@/utilities/build-tree-node';
+import { buildNormalizedTreeNode } from '@/utilities/normalize-tree-node';
 import clsx from 'clsx';
 import { useCallback, useRef, useState, type FC, type PointerEvent } from 'react';
 
@@ -13,10 +16,13 @@ interface Item {
 }
 
 interface PointerSortableListProps {
-  initial: Item[];
+  initial: MockData;
 }
 
 export const PointerSortableList: FC<PointerSortableListProps> = ({ initial }) => {
+  console.log(buildTreeNodes(initial, 'id', 'parentId'));
+  const [tree, setTree] = useState(() => buildNormalizedTreeNode(initial));
+  console.log(tree);
   const [items, setItems] = useState<Item[]>(initial);
   const refs = useRef<Record<string, HTMLElement | null>>({});
 

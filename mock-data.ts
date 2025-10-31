@@ -1,0 +1,27 @@
+export const mockData = [
+  { id: '1', parentId: null, name: 'Avengers Core' },
+  { id: '2', parentId: '1', name: 'Captain America' },
+  { id: '3', parentId: '1', name: 'Iron Man' },
+  { id: '4', parentId: '1', name: 'The Wasp' },
+  { id: '5', parentId: '1', name: 'Ant Man' },
+  { id: '6', parentId: '1', name: 'Hawkeye' },
+  { id: '7', parentId: null, name: 'X-Men' },
+  { id: '8', parentId: '7', name: 'Cyclops' },
+  { id: '9', parentId: '7', name: 'Angel' },
+  { id: '10', parentId: '7', name: 'Beast' },
+  { id: '11', parentId: '7', name: 'Marvel Girl' },
+  { id: '12', parentId: null, name: 'Fantastic 4' },
+  { id: '13', parentId: '12', name: 'Mr. Fantastic' },
+  { id: '14', parentId: '12', name: 'Invisible Woman' },
+  { id: '15', parentId: '12', name: 'The Human Torch' },
+  { id: '16', parentId: '12', name: 'The Thing' },
+  { id: '17', parentId: null, name: 'Guardians of The Galaxy' },
+  { id: '18', parentId: '17', name: 'Star Lord' },
+  { id: '19', parentId: '17', name: 'Gamora' },
+  { id: '20', parentId: '17', name: 'Rocket Raccoon' },
+  { id: '21', parentId: '17', name: 'Mantis' },
+  { id: '22', parentId: '17', name: 'Drax' },
+  { id: '23', parentId: '17', name: 'Groot' },
+];
+
+export type MockData = typeof mockData;

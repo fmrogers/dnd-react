@@ -1,4 +1,4 @@
-import type { TreeNode } from '@/app/utilities/build-tree-node';
+import type { TreeNode } from '@/utilities/build-tree-node';
 
 export interface FlatTreeRow<T> {
   id: string;
@@ -29,12 +29,16 @@ export function flattenTree<T>(
   { expanded, getId, getParentId, dragRootId }: FlattenTreeOptions<T>,
 ): FlatTreeRow<T>[] {
   const flat: FlatTreeRow<T>[] = [];
-  const stack: Array<{ node: TreeNode<T>; depth: number; parentId: string | null; siblingIndex: number; path: string }> = [];
+  const stack: Array<{
+    node: TreeNode<T>;
+    depth: number;
+    parentId: string | null;
+    siblingIndex: number;
+    path: string;
+  }> = [];
 
   // Prime stack with roots
-  roots.forEach((n, i) =>
-    stack.push({ node: n, depth: 0, parentId: getParentId(n), siblingIndex: i, path: getId(n) }),
-  );
+  roots.forEach((n, i) => stack.push({ node: n, depth: 0, parentId: getParentId(n), siblingIndex: i, path: getId(n) }));
 
   // Identify subtree nodes if dragging a parent
   const subtreeIds = new Set<string>();
