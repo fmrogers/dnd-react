@@ -3,36 +3,31 @@
 import { TreeNode } from '@/app/utilities/build-tree-node';
 import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
 import clsx from 'clsx';
-import { DragEvent, Fragment, useCallback, useMemo, useState, type FC } from 'react';
+import { DragEvent, Fragment, useCallback, useState } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 import styles from './pointer-sortable-list-native.module.css';
-import { Item } from './types';
 
-interface PointerSortableListProps {
-  initial: Item[];
+interface PointerSortableListProps<T, K extends keyof T> {
+  initial: T[];
+  idKey: K;
+  titleKey: keyof T;
 }
 
-export type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
+type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
 
-const idKey = 'id';
+export function PointerSortableListNative<T extends { children?: T[] }, K extends keyof T>({
+  initial,
+  idKey,
+  titleKey,
+}: PointerSortableListProps<T, K>) {
+  const [clickedItem, setClickedItem] = useState<T | null>(null);
 
-export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initial }) => {
-  const [clickedItem, setClickedItem] = useState<Item | null>(null);
-
-  const itemsIdMap = useMemo(() => {
-    const map = new Map<string, Item>();
-
-    initial.forEach((item) => map.set(item.id, item));
-
-    return map;
-  }, []);
-
-  const [items, setItems] = useState<Item[]>(initial);
+  const [items, setItems] = useState<T[]>(initial);
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
   const handleItemDrop = useCallback(
-    (itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
+    (itemDropEvent: HandleItemDropEvent<T, K>) => {
       const { kind } = itemDropEvent;
 
       console.log('Dropped:', itemDropEvent);
@@ -80,64 +75,62 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
     <>
       <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
         <div className="flex flex-col">
-          {items.map((item, index) => {
-            return (
-              <DraggableListItem
-                key={item[idKey]}
-                idKey={idKey}
-                allowPlacementBeforeSelf={index === 0}
-                item={item}
-                expandedState={expandedState}
-                onItemDrop={handleItemDrop}
-                className="w-120"
-                renderItem={({ item, isDragging }) => {
-                  const id = item[idKey];
+          {items.map((item, index) => (
+            <DraggableListItem
+              key={String(item[idKey])}
+              idKey={idKey}
+              allowPlacementBeforeSelf={index === 0}
+              item={item}
+              expandedState={expandedState}
+              onItemDrop={handleItemDrop}
+              className="w-120"
+              renderItem={({ item, isDragging }) => {
+                const id = String(item[idKey]);
 
-                  return (
-                    <div
-                      className={clsx(
-                        'px-3',
-                        'py-2',
-                        'rounded',
-                        'border-2',
-                        'border-slate-500',
-                        'bg-slate-700',
-                        'flex',
-                        'items-center',
-                        'gap-3',
-                      )}
-                    >
-                      {item.children?.length ? (
-                        <button
-                          style={{ width: 16 }}
-                          onClick={() => {
-                            setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
-                          }}
-                        >
-                          {isExpanded(expandedState, id) ? 'V' : '>'}
-                        </button>
-                      ) : (
-                        <div style={{ width: 16 }} />
-                      )}
+                return (
+                  <div
+                    className={clsx(
+                      'px-3',
+                      'py-2',
+                      'rounded',
+                      'border-2',
+                      'border-slate-500',
+                      'bg-slate-700',
+                      'flex',
+                      'items-center',
+                      'gap-3',
+                    )}
+                  >
+                    {item.children?.length ? (
                       <button
-                        className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setClickedItem(item);
+                        style={{ width: 16 }}
+                        onClick={() => {
+                          setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
                         }}
-                        onDrag={(event) => event.preventDefault()}
                       >
-                        {item.content}
+                        {isExpanded(expandedState, id) ? 'V' : '>'}
                       </button>
-                      {isDragging && !!item.children?.length && (
-                        <span className="text-sm italic">({item.children?.length} items)</span>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-            );
-          })}
+                    ) : (
+                      <div style={{ width: 16 }} />
+                    )}
+                    <button
+                      className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setClickedItem(item);
+                      }}
+                      onDrag={(event) => event.preventDefault()}
+                    >
+                      {String(item[titleKey])}
+                    </button>
+                    {isDragging && !!item.children?.length && (
+                      <span className="text-sm italic">({item.children?.length} items)</span>
+                    )}
+                  </div>
+                );
+              }}
+            />
+          ))}
         </div>
       </div>
 
@@ -146,13 +139,13 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
           <>
             <button onClick={() => setClickedItem(null)}>Close</button>
             <br />
-            Clicked on: <pre>{JSON.stringify(clickedItem.content, null, 2)}</pre>
+            Clicked on: <pre>{JSON.stringify(clickedItem, null, 2)}</pre>
           </>
         )}
       </div>
     </>
   );
-};
+}
 
 type HandleItemDropEvent<T, K extends keyof T> =
   | { kind: 'below'; draggedItemIdsPath: T[K][]; droppedBelowItemIdsPath: T[K][] }

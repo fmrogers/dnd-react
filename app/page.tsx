@@ -1,7 +1,9 @@
 import { PointerSortableListNative } from '@/components/pointer-sortable-list-native.comp';
+import { Item } from '@/components/types';
+import { TreeNode } from './utilities/build-tree-node';
 
 export default function Home() {
-  const items = [
+  const items: TreeNode<Item>[] = [
     {
       id: '1',
       content: 'Iron Man',
@@ -62,7 +64,7 @@ export default function Home() {
 
   return (
     <main className="flex justify-center items-center h-screen">
-      <PointerSortableListNative initial={items} />
+      <PointerSortableListNative initial={items} idKey="id" titleKey='content'/>
     </main>
   );
 }
