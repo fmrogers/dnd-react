@@ -3,36 +3,37 @@
 import { TreeNode } from '@/app/utilities/build-tree-node';
 import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
 import clsx from 'clsx';
-import { DragEvent, Fragment, useCallback, useMemo, useState, type FC } from 'react';
+import { DragEvent, Fragment, useCallback, useState } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 import styles from './pointer-sortable-list-native.module.css';
-import { Item } from './types';
 
-interface PointerSortableListProps {
-  initial: Item[];
+interface PointerSortableListProps<T, K extends keyof T> {
+  initial: T[];
+  /**
+   * The unique identifier key for each item in the list.
+   *
+   * @example
+   * 'id'
+   */
+  uniqueIdentifierKey: K;
+  titleKey: keyof T;
 }
 
-export type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
+type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
 
-const idKey = 'id';
+export function PointerSortableListNative<T extends { children?: T[] }, K extends keyof T>({
+  initial,
+  uniqueIdentifierKey,
+  titleKey,
+}: PointerSortableListProps<T, K>) {
+  const [clickedItem, setClickedItem] = useState<T | null>(null);
 
-export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initial }) => {
-  const [clickedItem, setClickedItem] = useState<Item | null>(null);
-
-  const itemsIdMap = useMemo(() => {
-    const map = new Map<string, Item>();
-
-    initial.forEach((item) => map.set(item.id, item));
-
-    return map;
-  }, []);
-
-  const [items, setItems] = useState<Item[]>(initial);
+  const [items, setItems] = useState<T[]>(initial);
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
   const handleItemDrop = useCallback(
-    (itemDropEvent: HandleItemDropEvent<Item, typeof idKey>) => {
+    (itemDropEvent: HandleItemDropEvent<T, K>) => {
       const { kind } = itemDropEvent;
 
       console.log('Dropped:', itemDropEvent);
@@ -41,7 +42,12 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
         case 'below': {
           const { draggedItemIdsPath, droppedBelowItemIdsPath } = itemDropEvent;
 
-          const updatedItems = placeItemsBeforeTarget(items, idKey, draggedItemIdsPath, droppedBelowItemIdsPath);
+          const updatedItems = placeItemsBeforeTarget(
+            items,
+            uniqueIdentifierKey,
+            draggedItemIdsPath,
+            droppedBelowItemIdsPath,
+          );
 
           setItems(updatedItems);
 
@@ -51,7 +57,7 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
         case 'over': {
           const { draggedItemIdsPath, droppedOnItemIdsPath } = itemDropEvent;
 
-          const updatedItems = moveItemAsChild(items, idKey, draggedItemIdsPath, droppedOnItemIdsPath);
+          const updatedItems = moveItemAsChild(items, uniqueIdentifierKey, draggedItemIdsPath, droppedOnItemIdsPath);
           setItems(updatedItems);
 
           break;
@@ -62,7 +68,7 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
 
           const updatedItems = placeItemsBeforeTargetActually(
             items,
-            idKey,
+            uniqueIdentifierKey,
             draggedItemIdsPath,
             droppedAboveItemIdsPath,
           );
@@ -73,71 +79,69 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
         }
       }
     },
-    [items, idKey],
+    [items, uniqueIdentifierKey],
   );
 
   return (
     <>
       <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
         <div className="flex flex-col">
-          {items.map((item, index) => {
-            return (
-              <DraggableListItem
-                key={item[idKey]}
-                idKey={idKey}
-                allowPlacementBeforeSelf={index === 0}
-                item={item}
-                expandedState={expandedState}
-                onItemDrop={handleItemDrop}
-                className="w-120"
-                renderItem={({ item, isDragging }) => {
-                  const id = item[idKey];
+          {items.map((item, index) => (
+            <DraggableListItem
+              key={String(item[uniqueIdentifierKey])}
+              uniqueIdentifierKey={uniqueIdentifierKey}
+              allowPlacementBeforeSelf={index === 0}
+              item={item}
+              expandedState={expandedState}
+              onItemDrop={handleItemDrop}
+              className="w-120"
+              renderItem={({ item, isDragging }) => {
+                const id = String(item[uniqueIdentifierKey]);
 
-                  return (
-                    <div
-                      className={clsx(
-                        'px-3',
-                        'py-2',
-                        'rounded',
-                        'border-2',
-                        'border-slate-500',
-                        'bg-slate-700',
-                        'flex',
-                        'items-center',
-                        'gap-3',
-                      )}
-                    >
-                      {item.children?.length ? (
-                        <button
-                          style={{ width: 16 }}
-                          onClick={() => {
-                            setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
-                          }}
-                        >
-                          {isExpanded(expandedState, id) ? 'V' : '>'}
-                        </button>
-                      ) : (
-                        <div style={{ width: 16 }} />
-                      )}
+                return (
+                  <div
+                    className={clsx(
+                      'px-3',
+                      'py-2',
+                      'rounded',
+                      'border-2',
+                      'border-slate-500',
+                      'bg-slate-700',
+                      'flex',
+                      'items-center',
+                      'gap-3',
+                    )}
+                  >
+                    {item.children?.length ? (
                       <button
-                        className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setClickedItem(item);
+                        style={{ width: 16 }}
+                        onClick={() => {
+                          setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
                         }}
-                        onDrag={(event) => event.preventDefault()}
                       >
-                        {item.content}
+                        {isExpanded(expandedState, id) ? 'V' : '>'}
                       </button>
-                      {isDragging && !!item.children?.length && (
-                        <span className="text-sm italic">({item.children?.length} items)</span>
-                      )}
-                    </div>
-                  );
-                }}
-              />
-            );
-          })}
+                    ) : (
+                      <div style={{ width: 16 }} />
+                    )}
+                    <button
+                      className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setClickedItem(item);
+                      }}
+                      onDrag={(event) => event.preventDefault()}
+                    >
+                      {String(item[titleKey])}
+                    </button>
+                    {isDragging && !!item.children?.length && (
+                      <span className="text-sm italic">({item.children?.length} items)</span>
+                    )}
+                  </div>
+                );
+              }}
+            />
+          ))}
         </div>
       </div>
 
@@ -146,13 +150,13 @@ export const PointerSortableListNative: FC<PointerSortableListProps> = ({ initia
           <>
             <button onClick={() => setClickedItem(null)}>Close</button>
             <br />
-            Clicked on: <pre>{JSON.stringify(clickedItem.content, null, 2)}</pre>
+            Clicked on: <pre>{JSON.stringify(clickedItem, null, 2)}</pre>
           </>
         )}
       </div>
     </>
   );
-};
+}
 
 type HandleItemDropEvent<T, K extends keyof T> =
   | { kind: 'below'; draggedItemIdsPath: T[K][]; droppedBelowItemIdsPath: T[K][] }
@@ -162,7 +166,7 @@ type HandleItemDropEvent<T, K extends keyof T> =
 type OnItemDrop<T, K extends keyof T> = (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
 
 function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
-  idKey,
+  uniqueIdentifierKey,
   item,
   onItemDrop,
   expandedState,
@@ -171,10 +175,10 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
   allowPlacementBeforeSelf,
   allowDropping = true,
   level = 0,
-  ids = [item[idKey]],
+  ids = [item[uniqueIdentifierKey]],
   childLevelMarginStep = 16,
 }: {
-  idKey: K;
+  uniqueIdentifierKey: K;
   item: TreeNode<T>;
   onItemDrop: OnItemDrop<T, K>;
   expandedState: Record<string, boolean>;
@@ -189,11 +193,11 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
    */
   childLevelMarginStep?: number;
 }) {
-  // const isDragging = draggingItemId === item[idKey];
+  // const isDragging = draggingItemId === item[uniqueIdentifierKey];
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <Fragment key={String(item[idKey])}>
+    <Fragment key={String(item[uniqueIdentifierKey])}>
       {allowPlacementBeforeSelf ? (
         <Divider
           childLevelMarginStep={childLevelMarginStep}
@@ -257,7 +261,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
               onItemDrop({
                 kind: 'over',
                 draggedItemIdsPath: draggedItem.ids,
-                droppedOnItemId: item[idKey],
+                droppedOnItemId: item[uniqueIdentifierKey],
                 droppedOnItemIdsPath: ids,
               });
 
@@ -278,12 +282,12 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
         />
       ) : null}
       {!!item.children?.length &&
-        isExpanded(expandedState, item[idKey]) &&
+        isExpanded(expandedState, item[uniqueIdentifierKey]) &&
         item.children.map((item, index) => {
           return (
             <DraggableListItem
-              key={String(item[idKey])}
-              idKey={idKey}
+              key={String(item[uniqueIdentifierKey])}
+              uniqueIdentifierKey={uniqueIdentifierKey}
               allowDropping={allowDropping && !isDragging}
               allowPlacementBeforeSelf={index === 0}
               item={item}
@@ -291,7 +295,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
               expandedState={expandedState}
               className="w-120"
               renderItem={renderItem}
-              ids={[...ids, item[idKey]]}
+              ids={[...ids, item[uniqueIdentifierKey]]}
               level={level + 1}
             />
           );
