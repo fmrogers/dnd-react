@@ -44,7 +44,10 @@ function useColumnDefs(onItemClick: (item: Item) => void) {
         const item = context.row.original;
 
         return (
-          <div className={clsx('px-3', 'py-2', 'flex', 'items-center', 'gap-3')}>
+          <div
+            className={clsx('px-3', 'py-2', 'flex', 'items-center', 'gap-3')}
+            style={{ marginLeft: context.row.childLevel * 16 }}
+          >
             {item.children?.length ? (
               <button style={{ width: 16 }} onClick={context.row.toggleExpanded}>
                 {context.row.isExpanded ? 'V' : '>'}

@@ -126,7 +126,6 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   allowDropping = true,
   level = 0,
   ids = [item[uniqueIdentifierKey]],
-  childLevelMarginStep = 16,
   draggableRowClassName,
 }: {
   uniqueIdentifierKey: K;
@@ -140,10 +139,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   className?: string;
   level?: number;
   ids?: T[K][];
-  /**
-   * @default 16
-   */
-  childLevelMarginStep?: number;
+
   columns: ColumnDef<T, any>[];
 }) {
   // const isDragging = draggingItemId === item[uniqueIdentifierKey];
@@ -153,7 +149,6 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
     <>
       {allowPlacementBeforeSelf ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
@@ -163,7 +158,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
       ) : null}
       <tr
         className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50', draggableRowClassName)}
-        style={{ paddingLeft: level * childLevelMarginStep, cursor: 'grab' }}
+        style={{ cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
           setIsDragging(true);
@@ -231,7 +226,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
                     row: {
                       original: item,
                       isDragging,
-                      childLevel: 0,
+                      childLevel: level,
                       isExpanded: isExpanded(expandedState, String(item[uniqueIdentifierKey])),
                       toggleExpanded: () =>
                         setExpandedState((prev) => ({
@@ -253,7 +248,6 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
       </tr>
       {!item.children?.length ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
@@ -284,7 +278,6 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
         })}
       {!!item.children?.length ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
@@ -298,14 +291,12 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
 
 function Divider<T, K extends keyof T>({
   level,
-  childLevelMarginStep,
   ids,
   onItemDrop,
   direction,
   disabled,
 }: {
   level: number;
-  childLevelMarginStep: number;
   onItemDrop: OnItemDrop<T, K>;
   ids: T[K][];
   direction: 'above' | 'below';
@@ -314,7 +305,6 @@ function Divider<T, K extends keyof T>({
   return (
     <tr
       style={{
-        marginLeft: level * childLevelMarginStep,
         pointerEvents: disabled ? 'none' : undefined,
         position: 'relative',
         height: 4,
@@ -376,6 +366,7 @@ function Divider<T, K extends keyof T>({
   );
 }
 
+// TODO: Is this function necessary
 function getDroppableListItem(event: DragEvent<HTMLDivElement>) {
   console.log(event.target);
 
