@@ -2,7 +2,8 @@
   height: calc(var(--cpl-dnd-sort-list-item-height) / 2 + 4px);
   margin: calc(var(--cpl-dnd-sort-list-item-height) / 4 * -1) 0;
   /* background-color: lightcoral; */
-  position: relative;
+  position: absolute;
+  width: 100%;
 }
 
 /**
@@ -11,21 +12,21 @@
  * The dragging state is only available on the item being dragged, so we use the sibling selector to
  * disable pointer events on the divider before it.
  */
-.dividerWrapper:has(+ [data-is-dragging='true']) {
+.dividerWrapper:has(tr:has(+ [data-is-dragging='true'])) {
   pointer-events: none;
 }
 
 /* CAN USE THIS TO DISTINGUISH BETWEEN GROUPED DIVIDERS */
 
 /* Divider for nested element */
-.dividerWrapper:has(+ .dividerWrapper) {
+.dividerWrapper:has(tr:has(+ .dividerWrapper)) {
   border: 1px solid lightcoral;
   width: 68%;
   transform: translateX(40%);
 }
 
 /* Divider for below parent element */
-.dividerWrapper + .dividerWrapper {
+.dividerWrapper:has(tr:has(+ td.dividerWrapper)) {
   border: 1px solid red;
   width: 40%;
 }

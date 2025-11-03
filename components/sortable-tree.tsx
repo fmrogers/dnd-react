@@ -85,8 +85,8 @@ export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
 
   return (
     <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-      <table>
-        <tbody className="flex flex-col">
+      <table className="w-120">
+        <tbody>
           {items.map((item, index) => (
             <DraggableRow
               key={String(item[uniqueIdentifierKey])}
@@ -313,50 +313,66 @@ function Divider<T, K extends keyof T>({
 }) {
   return (
     <tr
-      className={clsx(styles.dividerWrapper)}
-      style={{ marginLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
-      {...{
-        onDragOver: (event) => {
-          // This enables dropping
-          event.preventDefault();
-        },
-        onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-          (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-        },
-        onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-        },
-        onDrop: (event: DragEvent<HTMLDivElement>) => {
-          event.preventDefault();
-
-          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-
-          const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
-
-          if (!draggedItemData) {
-            return;
-          }
-
-          const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
-
-          if (direction === 'above') {
-            onItemDrop({
-              kind: direction,
-              draggedItemIdsPath: draggedItem.ids,
-              droppedAboveItemIdsPath: ids,
-            });
-          } else {
-            onItemDrop({
-              kind: direction,
-              draggedItemIdsPath: draggedItem.ids,
-              droppedBelowItemIdsPath: ids,
-            });
-          }
-
-          event.dataTransfer.clearData();
-        },
+      style={{
+        marginLeft: level * childLevelMarginStep,
+        pointerEvents: disabled ? 'none' : undefined,
+        position: 'relative',
+        height: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'visible',
       }}
-    />
+    >
+      {false ? (
+        <td />
+      ) : (
+        <td
+          className={clsx(styles.dividerWrapper)}
+          {...{
+            onDragOver: (event) => {
+              // This enables dropping
+              event.preventDefault();
+            },
+            onDragEnter: (event: DragEvent<HTMLDivElement>) => {
+              (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            },
+            onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            },
+            onDrop: (event: DragEvent<HTMLDivElement>) => {
+              event.preventDefault();
+
+              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+
+              const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
+
+              if (!draggedItemData) {
+                return;
+              }
+
+              const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
+
+              if (direction === 'above') {
+                onItemDrop({
+                  kind: direction,
+                  draggedItemIdsPath: draggedItem.ids,
+                  droppedAboveItemIdsPath: ids,
+                });
+              } else {
+                onItemDrop({
+                  kind: direction,
+                  draggedItemIdsPath: draggedItem.ids,
+                  droppedBelowItemIdsPath: ids,
+                });
+              }
+
+              event.dataTransfer.clearData();
+            },
+          }}
+        />
+      )}
+    </tr>
   );
 }
 
