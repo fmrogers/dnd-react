@@ -64,7 +64,7 @@ export default function Home() {
 
   return (
     <main className="flex justify-center items-center h-screen">
-      <PointerSortableListNative initial={items} idKey="id" titleKey='content'/>
+      <PointerSortableListNative initial={items} uniqueIdentifierKey="id" titleKey="content" />
     </main>
   );
 }
