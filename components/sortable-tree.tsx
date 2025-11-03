@@ -3,9 +3,10 @@
 import { TreeNode } from '@/app/utilities/build-tree-node';
 import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
 import clsx from 'clsx';
-import { DragEvent, Fragment, useCallback, useState } from 'react';
+import { Dispatch, DragEvent, SetStateAction, useCallback, useState } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 import styles from './pointer-sortable-list-native.module.css';
+import { ColumnDef } from './types';
 
 interface PointerSortableListProps<T, K extends keyof T> {
   initial: T[];
@@ -15,19 +16,19 @@ interface PointerSortableListProps<T, K extends keyof T> {
    * @example
    * 'id'
    */
-  uniqueIdentifierKey: K;
-  titleKey: keyof T;
+  uniqueIdentifierKey: K extends keyof T ? (T[K] extends string ? K : never) : never;
+  columns: ColumnDef<T, any>[];
+  draggableRowClassName: string;
 }
 
 type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
 
-export function PointerSortableListNative<T extends { children?: T[] }, K extends keyof T>({
+export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
   initial,
   uniqueIdentifierKey,
-  titleKey,
+  columns,
+  draggableRowClassName,
 }: PointerSortableListProps<T, K>) {
-  const [clickedItem, setClickedItem] = useState<T | null>(null);
-
   const [items, setItems] = useState<T[]>(initial);
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
@@ -83,78 +84,26 @@ export function PointerSortableListNative<T extends { children?: T[] }, K extend
   );
 
   return (
-    <>
-      <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-        <div className="flex flex-col">
+    <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
+      <table>
+        <tbody className="flex flex-col">
           {items.map((item, index) => (
-            <DraggableListItem
+            <DraggableRow
               key={String(item[uniqueIdentifierKey])}
               uniqueIdentifierKey={uniqueIdentifierKey}
               allowPlacementBeforeSelf={index === 0}
               item={item}
               expandedState={expandedState}
+              setExpandedState={setExpandedState}
               onItemDrop={handleItemDrop}
               className="w-120"
-              renderItem={({ item, isDragging }) => {
-                const id = String(item[uniqueIdentifierKey]);
-
-                return (
-                  <div
-                    className={clsx(
-                      'px-3',
-                      'py-2',
-                      'rounded',
-                      'border-2',
-                      'border-slate-500',
-                      'bg-slate-700',
-                      'flex',
-                      'items-center',
-                      'gap-3',
-                    )}
-                  >
-                    {item.children?.length ? (
-                      <button
-                        style={{ width: 16 }}
-                        onClick={() => {
-                          setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
-                        }}
-                      >
-                        {isExpanded(expandedState, id) ? 'V' : '>'}
-                      </button>
-                    ) : (
-                      <div style={{ width: 16 }} />
-                    )}
-                    <button
-                      className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setClickedItem(item);
-                      }}
-                      onDrag={(event) => event.preventDefault()}
-                    >
-                      {String(item[titleKey])}
-                    </button>
-                    {isDragging && !!item.children?.length && (
-                      <span className="text-sm italic">({item.children?.length} items)</span>
-                    )}
-                  </div>
-                );
-              }}
+              columns={columns}
+              draggableRowClassName={draggableRowClassName}
             />
           ))}
-        </div>
-      </div>
-
-      <div className="w-64 ml-4">
-        {clickedItem && (
-          <>
-            <button onClick={() => setClickedItem(null)}>Close</button>
-            <br />
-            Clicked on: <pre>{JSON.stringify(clickedItem, null, 2)}</pre>
-          </>
-        )}
-      </div>
-    </>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -165,25 +114,28 @@ type HandleItemDropEvent<T, K extends keyof T> =
 
 type OnItemDrop<T, K extends keyof T> = (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
 
-function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
+function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   uniqueIdentifierKey,
   item,
   onItemDrop,
   expandedState,
+  setExpandedState,
+  columns,
   className,
-  renderItem,
   allowPlacementBeforeSelf,
   allowDropping = true,
   level = 0,
   ids = [item[uniqueIdentifierKey]],
   childLevelMarginStep = 16,
+  draggableRowClassName,
 }: {
   uniqueIdentifierKey: K;
   item: TreeNode<T>;
   onItemDrop: OnItemDrop<T, K>;
   expandedState: Record<string, boolean>;
-  renderItem: ({ item, isDragging }: { item: TreeNode<T>; isDragging: boolean }) => React.ReactNode;
+  setExpandedState: Dispatch<SetStateAction<Record<string, boolean>>>;
   allowPlacementBeforeSelf: boolean;
+  draggableRowClassName: string;
   allowDropping?: boolean;
   className?: string;
   level?: number;
@@ -192,12 +144,13 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
    * @default 16
    */
   childLevelMarginStep?: number;
+  columns: ColumnDef<T, any>[];
 }) {
   // const isDragging = draggingItemId === item[uniqueIdentifierKey];
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <Fragment key={String(item[uniqueIdentifierKey])}>
+    <>
       {allowPlacementBeforeSelf ? (
         <Divider
           childLevelMarginStep={childLevelMarginStep}
@@ -208,8 +161,8 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           disabled={isDragging || !allowDropping}
         />
       ) : null}
-      <div
-        className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
+      <tr
+        className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50', draggableRowClassName)}
         style={{ paddingLeft: level * childLevelMarginStep, cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
@@ -269,8 +222,35 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
             },
           })}
       >
-        {renderItem({ item, isDragging })}
-      </div>
+        {columns.map((columnDef) => {
+          switch (columnDef.type) {
+            case 'accessor': {
+              return (
+                <td key={`${item[uniqueIdentifierKey]}-${columnDef.key}`}>
+                  {columnDef.cell({
+                    row: {
+                      original: item,
+                      isDragging,
+                      childLevel: 0,
+                      isExpanded: isExpanded(expandedState, String(item[uniqueIdentifierKey])),
+                      toggleExpanded: () =>
+                        setExpandedState((prev) => ({
+                          ...prev,
+                          [String(item[uniqueIdentifierKey])]: !isExpanded(prev, String(item[uniqueIdentifierKey])),
+                        })),
+                    },
+                    getValue: () => item[columnDef.key as keyof T],
+                  })}
+                </td>
+              );
+            }
+
+            case 'display': {
+              return null;
+            }
+          }
+        })}
+      </tr>
       {!item.children?.length ? (
         <Divider
           childLevelMarginStep={childLevelMarginStep}
@@ -285,16 +265,18 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
         isExpanded(expandedState, item[uniqueIdentifierKey]) &&
         item.children.map((item, index) => {
           return (
-            <DraggableListItem
+            <DraggableRow
               key={String(item[uniqueIdentifierKey])}
               uniqueIdentifierKey={uniqueIdentifierKey}
               allowDropping={allowDropping && !isDragging}
               allowPlacementBeforeSelf={index === 0}
               item={item}
+              draggableRowClassName={draggableRowClassName}
               onItemDrop={onItemDrop}
               expandedState={expandedState}
+              setExpandedState={setExpandedState}
+              columns={columns}
               className="w-120"
-              renderItem={renderItem}
               ids={[...ids, item[uniqueIdentifierKey]]}
               level={level + 1}
             />
@@ -310,7 +292,7 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
           disabled={isDragging || !allowDropping}
         />
       ) : null}
-    </Fragment>
+    </>
   );
 }
 
@@ -330,7 +312,7 @@ function Divider<T, K extends keyof T>({
   disabled: boolean;
 }) {
   return (
-    <div
+    <tr
       className={clsx(styles.dividerWrapper)}
       style={{ marginLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
       {...{
