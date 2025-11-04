@@ -9,7 +9,7 @@ import styles from './pointer-sortable-list-native.module.css';
 import { ColumnDef } from './types';
 
 interface PointerSortableListProps<T, K extends keyof T> {
-  initial: T[];
+  items: T[];
   /**
    * The unique identifier key for each item in the list.
    *
@@ -18,18 +18,18 @@ interface PointerSortableListProps<T, K extends keyof T> {
    */
   uniqueIdentifierKey: K extends keyof T ? (T[K] extends string ? K : never) : never;
   columns: ColumnDef<T, any>[];
-  draggableRowClassName: string;
+  stickyHeader?: boolean;
 }
 
 type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
 
 export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
-  initial,
+  items: initialItems,
   uniqueIdentifierKey,
   columns,
-  draggableRowClassName,
+  stickyHeader = false,
 }: PointerSortableListProps<T, K>) {
-  const [items, setItems] = useState<T[]>(initial);
+  const [items, setItems] = useState<T[]>(initialItems);
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
@@ -83,9 +83,21 @@ export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
     [items, uniqueIdentifierKey],
   );
 
+  // TODO: Toggle columns by some state
+  const visibleColumns = columns;
+
   return (
-    <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-      <table className="w-120">
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr className={clsx(stickyHeader && styles.stickyHeaderRow)}>
+            {visibleColumns.map((columnDef) => (
+              <th key={columnDef.header.toString()} className={styles.tableHeader} style={{ width: columnDef.size }}>
+                {columnDef.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
           {items.map((item, index) => (
             <DraggableRow
@@ -96,9 +108,7 @@ export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
               expandedState={expandedState}
               setExpandedState={setExpandedState}
               onItemDrop={handleItemDrop}
-              className="w-120"
-              columns={columns}
-              draggableRowClassName={draggableRowClassName}
+              columns={visibleColumns}
             />
           ))}
         </tbody>
@@ -121,12 +131,10 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   expandedState,
   setExpandedState,
   columns,
-  className,
   allowPlacementBeforeSelf,
   allowDropping = true,
   level = 0,
   ids = [item[uniqueIdentifierKey]],
-  draggableRowClassName,
 }: {
   uniqueIdentifierKey: K;
   item: TreeNode<T>;
@@ -134,9 +142,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   expandedState: Record<string, boolean>;
   setExpandedState: Dispatch<SetStateAction<Record<string, boolean>>>;
   allowPlacementBeforeSelf: boolean;
-  draggableRowClassName: string;
   allowDropping?: boolean;
-  className?: string;
   level?: number;
   ids?: T[K][];
 
@@ -154,10 +160,11 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
           onItemDrop={onItemDrop}
           direction="above"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
       <tr
-        className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50', draggableRowClassName)}
+        className={clsx(CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
         style={{ cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
@@ -253,6 +260,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
           onItemDrop={onItemDrop}
           direction="below"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
       {!!item.children?.length &&
@@ -265,12 +273,10 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
               allowDropping={allowDropping && !isDragging}
               allowPlacementBeforeSelf={index === 0}
               item={item}
-              draggableRowClassName={draggableRowClassName}
               onItemDrop={onItemDrop}
               expandedState={expandedState}
               setExpandedState={setExpandedState}
               columns={columns}
-              className="w-120"
               ids={[...ids, item[uniqueIdentifierKey]]}
               level={level + 1}
             />
@@ -283,6 +289,7 @@ function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
           onItemDrop={onItemDrop}
           direction="below"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
     </>
@@ -295,85 +302,74 @@ function Divider<T, K extends keyof T>({
   onItemDrop,
   direction,
   disabled,
+  columnsCount,
 }: {
   level: number;
   onItemDrop: OnItemDrop<T, K>;
   ids: T[K][];
   direction: 'above' | 'below';
   disabled: boolean;
+  columnsCount: number;
 }) {
   return (
-    <tr
-      style={{
-        pointerEvents: disabled ? 'none' : undefined,
-        position: 'relative',
-        height: 4,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'visible',
-      }}
-    >
-      {false ? (
-        <td />
-      ) : (
-        <td
-          className={clsx(styles.dividerWrapper)}
-          {...{
-            onDragOver: (event) => {
-              // This enables dropping
-              event.preventDefault();
-            },
-            onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-              (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-            },
-            onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-            },
-            onDrop: (event: DragEvent<HTMLDivElement>) => {
-              event.preventDefault();
+    <tr aria-disabled={disabled} className={styles.dividerRow}>
+      <td
+        className={clsx(styles.dividerCell)}
+        colSpan={columnsCount}
+        {...{
+          onDragOver: (event) => {
+            // This enables dropping
+            event.preventDefault();
+          },
+          onDragEnter: (event: DragEvent<HTMLDivElement>) => {
+            (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+          },
+          onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+          },
+          onDrop: (event: DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
 
-              (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
 
-              const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
+            const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
 
-              if (!draggedItemData) {
-                return;
-              }
+            if (!draggedItemData) {
+              return;
+            }
 
-              const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
+            const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
 
-              if (direction === 'above') {
-                onItemDrop({
-                  kind: direction,
-                  draggedItemIdsPath: draggedItem.ids,
-                  droppedAboveItemIdsPath: ids,
-                });
-              } else {
-                onItemDrop({
-                  kind: direction,
-                  draggedItemIdsPath: draggedItem.ids,
-                  droppedBelowItemIdsPath: ids,
-                });
-              }
+            if (direction === 'above') {
+              onItemDrop({
+                kind: direction,
+                draggedItemIdsPath: draggedItem.ids,
+                droppedAboveItemIdsPath: ids,
+              });
+            } else {
+              onItemDrop({
+                kind: direction,
+                draggedItemIdsPath: draggedItem.ids,
+                droppedBelowItemIdsPath: ids,
+              });
+            }
 
-              event.dataTransfer.clearData();
-            },
-          }}
-        />
-      )}
+            event.dataTransfer.clearData();
+          },
+        }}
+      />
     </tr>
   );
 }
 
-// TODO: Is this function necessary
+// TODO: Is this function necessary??
 function getDroppableListItem(event: DragEvent<HTMLDivElement>) {
   console.log(event.target);
 
   return (event.target as HTMLElement).closest(`.${CPL_DRAG_ITEM_CLASS_NAME}`) as HTMLDivElement | null;
 }
 
-const CPL_DRAG_ITEM_CLASS_NAME = 'cpl-dragitem';
+const CPL_DRAG_ITEM_CLASS_NAME = styles.draggableRow;
 const CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME = styles.draggingOverListItem;
 const CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME = styles.draggingOverListDivider;
 const ITEM_DATA_TRANSFER_KEY = 'item-id';

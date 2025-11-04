@@ -8,6 +8,8 @@ export function buildColumnHelper<T>() {
     ): AccessorColumnDef<T, K> => ({
       type: 'accessor',
       key,
+      header: String(key),
+      size: DEFAULT_COLUMN_SIZE,
       cell: (context) => String(context.getValue()), // TODO: Add default cell
       ...options,
     }),
@@ -17,3 +19,5 @@ export function buildColumnHelper<T>() {
     }),
   };
 }
+
+const DEFAULT_COLUMN_SIZE = 150; // px

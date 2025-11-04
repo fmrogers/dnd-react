@@ -1,8 +1,11 @@
-import { ReactNode } from 'react';
+import { ReactElement } from 'react';
 
 export interface Item {
   id: string;
   name: string;
+  category: string;
+  gems: number;
+  mainSkill: string;
   children?: Item[];
 }
 
@@ -22,16 +25,24 @@ export type CellContext<T, K extends keyof T, ValueType extends T[K]> = {
   getValue: () => ValueType;
 };
 
-export type AccessorColumnDef<T, K extends keyof T> = {
+type SharedColumnDef = {
+  header: string | ReactElement;
+  /**
+   * Column width in pixels
+   *
+   * @default 150
+   */
+  size: number;
+};
+
+export type AccessorColumnDef<T, K extends keyof T> = SharedColumnDef & {
   type: 'accessor';
   key: K;
-  header?: string | ReactNode;
   cell: (context: CellContext<T, K, T[K]>) => React.ReactNode;
 };
 
-export type DisplayColumnDef<T> = {
+export type DisplayColumnDef<T> = SharedColumnDef & {
   type: 'display';
-  header?: string | ReactNode;
   cell: (item: T) => React.ReactNode;
 };
 
