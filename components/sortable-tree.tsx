@@ -3,32 +3,33 @@
 import { TreeNode } from '@/app/utilities/build-tree-node';
 import { objectHasOwnProperty } from '@/app/utilities/object-has-own-property';
 import clsx from 'clsx';
-import { DragEvent, Fragment, useCallback, useState } from 'react';
+import { Dispatch, DragEvent, SetStateAction, useCallback, useState } from 'react';
 import { moveItemAsChild, placeItemsBeforeTarget, placeItemsBeforeTargetActually } from './list-4.utils';
 import styles from './pointer-sortable-list-native.module.css';
+import { ColumnDef } from './types';
 
 interface PointerSortableListProps<T, K extends keyof T> {
-  initial: T[];
+  items: T[];
   /**
    * The unique identifier key for each item in the list.
    *
    * @example
    * 'id'
    */
-  uniqueIdentifierKey: K;
-  titleKey: keyof T;
+  uniqueIdentifierKey: K extends keyof T ? (T[K] extends string ? K : never) : never;
+  columns: ColumnDef<T, any>[];
+  stickyHeader?: boolean;
 }
 
 type FlattenTreeNode<T, K extends keyof T> = T & { level: number; ids: T[K][] };
 
-export function PointerSortableListNative<T extends { children?: T[] }, K extends keyof T>({
-  initial,
+export function SortableTree<T extends { children?: T[] }, K extends keyof T>({
+  items: initialItems,
   uniqueIdentifierKey,
-  titleKey,
+  columns,
+  stickyHeader = false,
 }: PointerSortableListProps<T, K>) {
-  const [clickedItem, setClickedItem] = useState<T | null>(null);
-
-  const [items, setItems] = useState<T[]>(initial);
+  const [items, setItems] = useState<T[]>(initialItems);
 
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
 
@@ -82,79 +83,37 @@ export function PointerSortableListNative<T extends { children?: T[] }, K extend
     [items, uniqueIdentifierKey],
   );
 
+  // TODO: Toggle columns by some state
+  const visibleColumns = columns;
+
   return (
-    <>
-      <div className="p-4 rounded bg-gray-900 max-h-[80dvh] overflow-y-auto">
-        <div className="flex flex-col">
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr className={clsx(stickyHeader && styles.stickyHeaderRow)}>
+            {visibleColumns.map((columnDef) => (
+              <th key={columnDef.header.toString()} className={styles.tableHeader} style={{ width: columnDef.size }}>
+                {columnDef.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
           {items.map((item, index) => (
-            <DraggableListItem
+            <DraggableRow
               key={String(item[uniqueIdentifierKey])}
               uniqueIdentifierKey={uniqueIdentifierKey}
               allowPlacementBeforeSelf={index === 0}
               item={item}
               expandedState={expandedState}
+              setExpandedState={setExpandedState}
               onItemDrop={handleItemDrop}
-              className="w-120"
-              renderItem={({ item, isDragging }) => {
-                const id = String(item[uniqueIdentifierKey]);
-
-                return (
-                  <div
-                    className={clsx(
-                      'px-3',
-                      'py-2',
-                      'rounded',
-                      'border-2',
-                      'border-slate-500',
-                      'bg-slate-700',
-                      'flex',
-                      'items-center',
-                      'gap-3',
-                    )}
-                  >
-                    {item.children?.length ? (
-                      <button
-                        style={{ width: 16 }}
-                        onClick={() => {
-                          setExpandedState((prev) => ({ ...prev, [id]: !isExpanded(prev, id) }));
-                        }}
-                      >
-                        {isExpanded(expandedState, id) ? 'V' : '>'}
-                      </button>
-                    ) : (
-                      <div style={{ width: 16 }} />
-                    )}
-                    <button
-                      className={clsx('min-w-0', 'select-none', 'inline-block', 'text-left', 'cursor-pointer')}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setClickedItem(item);
-                      }}
-                      onDrag={(event) => event.preventDefault()}
-                    >
-                      {String(item[titleKey])}
-                    </button>
-                    {isDragging && !!item.children?.length && (
-                      <span className="text-sm italic">({item.children?.length} items)</span>
-                    )}
-                  </div>
-                );
-              }}
+              columns={visibleColumns}
             />
           ))}
-        </div>
-      </div>
-
-      <div className="w-64 ml-4">
-        {clickedItem && (
-          <>
-            <button onClick={() => setClickedItem(null)}>Close</button>
-            <br />
-            Clicked on: <pre>{JSON.stringify(clickedItem, null, 2)}</pre>
-          </>
-        )}
-      </div>
-    </>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -165,52 +124,48 @@ type HandleItemDropEvent<T, K extends keyof T> =
 
 type OnItemDrop<T, K extends keyof T> = (handleItemDropEvent: HandleItemDropEvent<T, K>) => void;
 
-function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
+function DraggableRow<T extends { children?: T[] }, K extends keyof T>({
   uniqueIdentifierKey,
   item,
   onItemDrop,
   expandedState,
-  className,
-  renderItem,
+  setExpandedState,
+  columns,
   allowPlacementBeforeSelf,
   allowDropping = true,
   level = 0,
   ids = [item[uniqueIdentifierKey]],
-  childLevelMarginStep = 16,
 }: {
   uniqueIdentifierKey: K;
   item: TreeNode<T>;
   onItemDrop: OnItemDrop<T, K>;
   expandedState: Record<string, boolean>;
-  renderItem: ({ item, isDragging }: { item: TreeNode<T>; isDragging: boolean }) => React.ReactNode;
+  setExpandedState: Dispatch<SetStateAction<Record<string, boolean>>>;
   allowPlacementBeforeSelf: boolean;
   allowDropping?: boolean;
-  className?: string;
   level?: number;
   ids?: T[K][];
-  /**
-   * @default 16
-   */
-  childLevelMarginStep?: number;
+
+  columns: ColumnDef<T, any>[];
 }) {
   // const isDragging = draggingItemId === item[uniqueIdentifierKey];
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <Fragment key={String(item[uniqueIdentifierKey])}>
+    <>
       {allowPlacementBeforeSelf ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
           direction="above"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
-      <div
-        className={clsx(className, CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
-        style={{ paddingLeft: level * childLevelMarginStep, cursor: 'grab' }}
+      <tr
+        className={clsx(CPL_DRAG_ITEM_CLASS_NAME, isDragging && 'opacity-50')}
+        style={{ cursor: 'grab' }}
         draggable={true}
         onDragStart={(event) => {
           setIsDragging(true);
@@ -269,23 +224,50 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
             },
           })}
       >
-        {renderItem({ item, isDragging })}
-      </div>
+        {columns.map((columnDef) => {
+          switch (columnDef.type) {
+            case 'accessor': {
+              return (
+                <td key={`${item[uniqueIdentifierKey]}-${columnDef.key}`}>
+                  {columnDef.cell({
+                    row: {
+                      original: item,
+                      isDragging,
+                      childLevel: level,
+                      isExpanded: isExpanded(expandedState, String(item[uniqueIdentifierKey])),
+                      toggleExpanded: () =>
+                        setExpandedState((prev) => ({
+                          ...prev,
+                          [String(item[uniqueIdentifierKey])]: !isExpanded(prev, String(item[uniqueIdentifierKey])),
+                        })),
+                    },
+                    getValue: () => item[columnDef.key as keyof T],
+                  })}
+                </td>
+              );
+            }
+
+            case 'display': {
+              return null;
+            }
+          }
+        })}
+      </tr>
       {!item.children?.length ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
           direction="below"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
       {!!item.children?.length &&
         isExpanded(expandedState, item[uniqueIdentifierKey]) &&
         item.children.map((item, index) => {
           return (
-            <DraggableListItem
+            <DraggableRow
               key={String(item[uniqueIdentifierKey])}
               uniqueIdentifierKey={uniqueIdentifierKey}
               allowDropping={allowDropping && !isDragging}
@@ -293,8 +275,8 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
               item={item}
               onItemDrop={onItemDrop}
               expandedState={expandedState}
-              className="w-120"
-              renderItem={renderItem}
+              setExpandedState={setExpandedState}
+              columns={columns}
               ids={[...ids, item[uniqueIdentifierKey]]}
               level={level + 1}
             />
@@ -302,89 +284,92 @@ function DraggableListItem<T extends { children?: T[] }, K extends keyof T>({
         })}
       {!!item.children?.length ? (
         <Divider
-          childLevelMarginStep={childLevelMarginStep}
           ids={ids}
           level={level}
           onItemDrop={onItemDrop}
           direction="below"
           disabled={isDragging || !allowDropping}
+          columnsCount={columns.length}
         />
       ) : null}
-    </Fragment>
+    </>
   );
 }
 
 function Divider<T, K extends keyof T>({
   level,
-  childLevelMarginStep,
   ids,
   onItemDrop,
   direction,
   disabled,
+  columnsCount,
 }: {
   level: number;
-  childLevelMarginStep: number;
   onItemDrop: OnItemDrop<T, K>;
   ids: T[K][];
   direction: 'above' | 'below';
   disabled: boolean;
+  columnsCount: number;
 }) {
   return (
-    <div
-      className={clsx(styles.dividerWrapper)}
-      style={{ marginLeft: level * childLevelMarginStep, pointerEvents: disabled ? 'none' : undefined }}
-      {...{
-        onDragOver: (event) => {
-          // This enables dropping
-          event.preventDefault();
-        },
-        onDragEnter: (event: DragEvent<HTMLDivElement>) => {
-          (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-        },
-        onDragLeave: (event: DragEvent<HTMLDivElement>) => {
-          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
-        },
-        onDrop: (event: DragEvent<HTMLDivElement>) => {
-          event.preventDefault();
+    <tr aria-disabled={disabled} className={styles.dividerRow}>
+      <td
+        className={clsx(styles.dividerCell)}
+        colSpan={columnsCount}
+        {...{
+          onDragOver: (event) => {
+            // This enables dropping
+            event.preventDefault();
+          },
+          onDragEnter: (event: DragEvent<HTMLDivElement>) => {
+            (event.target as HTMLDivElement)?.classList.add(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+          },
+          onDragLeave: (event: DragEvent<HTMLDivElement>) => {
+            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+          },
+          onDrop: (event: DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
 
-          (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
+            (event.target as HTMLDivElement).classList.remove(CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME);
 
-          const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
+            const draggedItemData = event.dataTransfer.getData(ITEM_DATA_TRANSFER_KEY);
 
-          if (!draggedItemData) {
-            return;
-          }
+            if (!draggedItemData) {
+              return;
+            }
 
-          const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
+            const draggedItem = JSON.parse(draggedItemData) as FlattenTreeNode<T, K>;
 
-          if (direction === 'above') {
-            onItemDrop({
-              kind: direction,
-              draggedItemIdsPath: draggedItem.ids,
-              droppedAboveItemIdsPath: ids,
-            });
-          } else {
-            onItemDrop({
-              kind: direction,
-              draggedItemIdsPath: draggedItem.ids,
-              droppedBelowItemIdsPath: ids,
-            });
-          }
+            if (direction === 'above') {
+              onItemDrop({
+                kind: direction,
+                draggedItemIdsPath: draggedItem.ids,
+                droppedAboveItemIdsPath: ids,
+              });
+            } else {
+              onItemDrop({
+                kind: direction,
+                draggedItemIdsPath: draggedItem.ids,
+                droppedBelowItemIdsPath: ids,
+              });
+            }
 
-          event.dataTransfer.clearData();
-        },
-      }}
-    />
+            event.dataTransfer.clearData();
+          },
+        }}
+      />
+    </tr>
   );
 }
 
+// TODO: Is this function necessary??
 function getDroppableListItem(event: DragEvent<HTMLDivElement>) {
   console.log(event.target);
 
   return (event.target as HTMLElement).closest(`.${CPL_DRAG_ITEM_CLASS_NAME}`) as HTMLDivElement | null;
 }
 
-const CPL_DRAG_ITEM_CLASS_NAME = 'cpl-dragitem';
+const CPL_DRAG_ITEM_CLASS_NAME = styles.draggableRow;
 const CPL_DRAGGING_OVER_LIST_ITEM_CLASS_NAME = styles.draggingOverListItem;
 const CPL_DRAGGING_OVER_LIST_DIVIDER_CLASS_NAME = styles.draggingOverListDivider;
 const ITEM_DATA_TRANSFER_KEY = 'item-id';
